@@ -1,0 +1,23 @@
+#myrock-logo {
+    display: inline-block;
+    width: 100px;
+    height: 60px;
+    border: 1px solid #000;
+    text-align: center;
+    align-content: center;
+    margin-bottom: 30px;
+}
+
+nav {
+    height: 30px;
+    border: 1px solid #000;
+    align-content: center;
+    margin-bottom: 30px;
+}
+
+main {
+    height: 600px;
+    text-align: center;
+    align-content: center;
+    border: 1px solid #000;
+}
