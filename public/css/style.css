@@ -1,8 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Asta+Sans:wght@300..800&display=swap');
 
 body {
+    color: #222;
     font-family: "Asta Sans", sans-serif;
     overflow-y: scroll;
+    min-width: 1000px;
+}
+
+nav {
+    width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+    white-space: nowrap;
 }
 
 #myrock-logo {
@@ -11,7 +23,6 @@ body {
 }
 
 #menu {
-    width: 1000px;
     display: flex;
     gap: 24px;
 }
@@ -31,11 +42,8 @@ body {
     font-weight: 700;
 }
 
-nav {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 30px;
+#log-in {
+    margin-left: auto;
 }
 
 #layout {
@@ -45,7 +53,7 @@ nav {
 }
 
 #sidemenu {
-    width: 200px;
+    flex: 0 0 200px;
     height: 200px;
     border-right: 1px solid rgba(0,0,0,.08);
 }
@@ -65,18 +73,14 @@ nav {
 }
 
 #content {
-    width: 1000px;
-    padding: 30px;
+    flex: 0 0 1000px;
+    padding: 0 30px;
 }
 
-#main-poster {
-    display: flex;
-    align-items: center;
-    gap: 36px;
-    overflow-x: auto;
+#content h1, h2, h3 {
+    margin: 42px 0 20px 0;
 }
 
-#main-poster img {
-    height: 500px;
-    border: 1px solid #eee;
+#content p {
+    line-height: 20pt;
 }
