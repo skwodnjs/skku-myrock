@@ -40,13 +40,13 @@ logoutBtn?.addEventListener("click", async () => {
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     if (!isSigningOut) alert("로그인이 필요합니다.");
-    location.replace("/sign-in");
+    location.replace("/");
     return;
   }
   emailVerifiedEl.textContent = user.emailVerified ? "인증됨" : "미인증";
 
   try {
-    const q = query(collection(db, "personal"), where("email", "==", user.email));
+    const q = query(collection(db, "users"), where("email", "==", user.email));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {

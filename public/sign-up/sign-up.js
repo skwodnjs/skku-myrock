@@ -69,15 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       await setDoc(doc(db, "users", user.uid), profile);
 
-      // 3) 개인정보 페이지에서 email로 조회하는 personal 컬렉션에도 저장
-      //    (요청사항: personal 컬렉션에 email 필드로 확인/조회)
-      await setDoc(doc(db, "personal", user.uid), {
-        ...profile,
-        uid: user.uid,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 4) 이메일 인증 발송
+      // 3) 이메일 인증 발송
       await sendEmailVerification(user);
 
       alert("회원가입 완료! 이메일 인증을 진행해주세요.");

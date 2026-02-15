@@ -22,7 +22,7 @@
 <body>
     <header>
         <nav>
-            <a href=".">
+            <a href="/">
                 <img src="/assets/myrock-logo.png" id="myrock-logo">
             </a>
             <div id="menu">
@@ -33,6 +33,7 @@
                 <a href="/link">외부 링크</a>
             </div>
             <a href="/sign-in" id="log-in">로그인</a>
+            <a href="/edit" id="edit" style="display: none;">글쓰기</a>
         </nav>
     </header>
     <div id="layout">
@@ -47,5 +48,6 @@
         </main>
     </div>
     <script type="module" src="/js/auth-state.js"></script>
+    <script type="module" src="/js/check-auth.js"></script>
 </body>
 </html>

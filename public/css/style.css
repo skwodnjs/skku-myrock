@@ -1,8 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Asta+Sans:wght@300..800&display=swap');
 
+* {
+    font-family: "Asta Sans", sans-serif;
+}
+
 body {
     color: #222;
-    font-family: "Asta Sans", sans-serif;
     overflow-y: scroll;
     min-width: 1000px;
 }
@@ -27,13 +30,13 @@ nav {
     gap: 24px;
 }
 
-#menu a, #log-in {
+#menu a, #log-in, #edit {
     color: #555;
     text-decoration: none;
     font-size: 11pt;
 }
 
-#menu a:hover, #log-in:hover {
+#menu a:hover, #log-in:hover, #edit:hover {
     color: #111;
 }
 
@@ -44,6 +47,10 @@ nav {
 
 #log-in {
     margin-left: auto;
+}
+
+#edit {
+    margin-left: 10px;
 }
 
 #layout {
