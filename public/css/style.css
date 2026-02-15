@@ -1,23 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Asta+Sans:wght@300..800&display=swap');
+
+body {
+    font-family: "Asta Sans", sans-serif;
+    overflow-y: scroll;
+}
+
 #myrock-logo {
-    display: inline-block;
-    width: 100px;
-    height: 60px;
-    border: 1px solid #000;
-    text-align: center;
-    align-content: center;
-    margin-bottom: 30px;
+    width: 150px;
+    margin-right: 24px;
+}
+
+#menu {
+    width: 1000px;
+    display: flex;
+    gap: 24px;
+}
+
+#menu a, #log-in {
+    color: #555;
+    text-decoration: none;
+    font-size: 11pt;
+}
+
+#menu a:hover, #log-in:hover {
+    color: #111;
+}
+
+#menu a.selected {
+    color: #111;
+    font-weight: 700;
 }
 
 nav {
-    height: 30px;
-    border: 1px solid #000;
-    align-content: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin-bottom: 30px;
 }
 
-main {
-    height: 600px;
-    text-align: center;
-    align-content: center;
-    border: 1px solid #000;
+#layout {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+}
+
+#sidemenu {
+    width: 200px;
+    height: 200px;
+    border-right: 1px solid rgba(0,0,0,.08);
+}
+
+#sidemenu ul {
+    list-style: none;
+    line-height: 26pt;
+}
+
+#sidemenu a {
+    color: #555;
+    text-decoration: none;
+}
+
+#sidemenu a:hover {
+    color: #111;
+}
+
+#content {
+    width: 1000px;
+    padding: 30px;
+}
+
+#main-poster {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    overflow-x: auto;
+}
+
+#main-poster img {
+    height: 500px;
+    border: 1px solid #eee;
 }

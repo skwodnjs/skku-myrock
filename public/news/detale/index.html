@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <link rel="stylesheet" href="/public/css/news.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/public">
+                <img src="/public/assets/myrock-logo.png" id="myrock-logo">
+            </a>
+            <div id="menu">
+                <a href="/public/about">소개</a>
+                <a href="/public/schedule">공연 일정</a>
+                <a href="/public/news" class="selected">공지사항</a>
+                <a href="/public/cloud">클라우드</a>
+                <a href="/public/link">외부 링크</a>
+            </div>
+        </nav>
+    </header>
+    <div id="layout">
+        <main>
+            <div id="content">
+                <!-- 6siP1lLtCcTyKqD7Wj07 -->
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        // ===== 1. Firebase SDK 불러오기 =====
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc
+        } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+        // ===== 2. firebaseConfig =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyC-2H282ITWdqBTYVJBsoC0gnA9Y-xl4LM",
+            authDomain: "skku-myrock.firebaseapp.com",
+            projectId: "skku-myrock",
+            storageBucket: "skku-myrock.firebasestorage.app",
+            messagingSenderId: "42597556706",
+            appId: "1:42597556706:web:6f6cde9d80c43cf94a59bb"
+        };
+
+        // ===== 3. Firebase 초기화 =====
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ===== 4. URL에서 id 파싱 =====
+        const params = new URLSearchParams(location.search);
+        const postId = params.get("id");
+
+        // ===== 5. 출력 위치 =====
+        const content = document.getElementById("content");
+
+        // ===== 6. 문서 불러오기 =====
+        async function loadPost() {
+            if (!postId) {
+                content.innerHTML = "<p>잘못된 접근입니다.</p>";
+                return;
+            }
+
+            const ref = doc(db, "news-contents", postId);
+            const snap = await getDoc(ref);
+
+            if (!snap.exists()) {
+                content.innerHTML = "<p>존재하지 않는 공지입니다.</p>";
+                return;
+            }
+
+            const data = snap.data();
+
+            // ===== 7. contents 그대로 출력 =====
+            content.innerHTML = data.contents;
+        }
+
+        // ===== 8. 실행 =====
+        loadPost();
+    </script>
+</body>
+</html>

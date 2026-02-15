@@ -4,8 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News</title>
+    <link rel="stylesheet" href="/public/css/style.css">
+    <link rel="stylesheet" href="/public/css/news.css">
 </head>
 <body>
-    
+    <header>
+        <nav>
+            <a href="/public">
+                <img src="/public/assets/myrock-logo.png" id="myrock-logo">
+            </a>
+            <div id="menu">
+                <a href="/public/about">소개</a>
+                <a href="/public/schedule">공연 일정</a>
+                <a href="/public/news" class="selected">공지사항</a>
+                <a href="/public/cloud">클라우드</a>
+                <a href="/public/link">외부 링크</a>
+            </div>
+        </nav>
+    </header>
+    <div id="layout">
+        <main>
+            <div id="content">
+                <div class="wrap">
+                    <ul class="board" id="news-board">
+                        <li class="head">
+                            <span class="title">제목</span>
+                            <span class="date">날짜</span>
+                        </li>
+
+                        <!-- <li>
+                            <span class="title"><a href="./detale">모여락 28.5기 신입부원 모집</a></span>
+                            <span class="date">2025-12-31</span>
+                        </li>
+
+                        <li>
+                            <span class="title"><a href="">2025년 모여락 홈커밍데이 관련 안내</a></span>
+                            <span class="date">2025-12-31</span>
+                        </li>
+
+                        <li>
+                            <span class="title"><a href="">2025년 성균문화제 공연 공지</a></span>
+                            <span class="date">2025-12-31</span>
+                        </li>
+
+                        <li>
+                            <span class="title"><a href="">2025학년도 1학기 홍보부스 진행 일정 안내</a></span>
+                            <span class="date">2025-12-31</span>
+                        </li> -->
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        // ===== 1. Firebase SDK 불러오기 =====
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import {
+        getFirestore,
+        collection,
+        getDocs,
+        query,
+        orderBy
+        } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+        // ===== 2. firebaseConfig =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyC-2H282ITWdqBTYVJBsoC0gnA9Y-xl4LM",
+            authDomain: "skku-myrock.firebaseapp.com",
+            projectId: "skku-myrock",
+            storageBucket: "skku-myrock.firebasestorage.app",
+            messagingSenderId: "42597556706",
+            appId: "1:42597556706:web:6f6cde9d80c43cf94a59bb"
+        };
+
+        // ===== 3. Firebase 초기화 =====
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ===== 4. HTML 목록 위치 =====
+        const board = document.getElementById("news-board");
+
+        // ===== 5. Firestore → HTML 출력 함수 =====
+        function addRow(title, id, timestamp) {
+            const li = document.createElement("li");
+            const d = timestamp.toDate();
+
+            // YYYY-MM-DD 포맷
+            const year  = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const day   = String(d.getDate()).padStart(2, "0");
+
+            const formattedDate = `${year}-${month}-${day}`;
+
+            li.innerHTML = `
+                <span class="title">
+                    <a href="./detale/?id=${id}">${title}</a>
+                </span>
+                <span class="date">${formattedDate}</span>
+            `;
+
+            board.appendChild(li);
+        }
+
+        // ===== 6. Firestore 데이터 불러오기 =====
+        async function loadSchedules() {
+            const q = query(
+                collection(db, "news"),
+                orderBy("date", "desc")
+            );
+
+            const snapshot = await getDocs(q);
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                addRow(data.title, doc.id, data.date);
+            });
+        }
+
+        // ===== 7. 실행 =====
+        loadSchedules();
+    </script>
 </body>
 </html>

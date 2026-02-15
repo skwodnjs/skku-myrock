@@ -1,0 +1,43 @@
+.wrap{
+  max-width: 1200px;
+  margin: 20px auto;
+}
+
+.wrap ul {
+  list-style: none;
+  padding:0;
+  border:1px solid #eee;
+  border-radius: 4px;
+}
+
+.board a {
+  color: #000;
+  text-decoration: none;
+}
+
+.board li {
+  display: flex;
+  padding: 16px 20px;
+  border-top: 1px solid #eee;
+}
+
+.board li:first-child {
+  border-top: none;
+}
+
+.board .head {
+  font-weight:700;
+}
+
+.title {
+  flex:1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date {
+  width: 140px;
+  text-align: right;
+  font-weight: 600;
+}

@@ -3,22 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud</title>
+    <title>News</title>
     <link rel="stylesheet" href="/public/css/style.css">
+    <link rel="stylesheet" href="/public/css/cloud.css">
 </head>
 <body>
     <header>
-        <div id="myrock-logo"><a href="/public">logo</a></div>
         <nav>
-            <a href="./about">악보</a>
-            <a href="./schedule">장부</a>
-            <a href="./news">모여락 클라우드</a>
-            <!-- 모여락 클라우드는 권한이 있는 사람만 들어갈 수 있어야 함, 구글 클라우드 링크로 연결하되 구글 클라우드가 권한이 없으면 안보여야 함 -->
-             <!-- 클라우드에는 인수인계 파일 & 평가시트 & 악보 리스트 -->
+            <a href="/public">
+                <img src="/public/assets/myrock-logo.png" id="myrock-logo">
+            </a>
+            <div id="menu">
+                <a href="/public/about">소개</a>
+                <a href="/public/schedule">공연 일정</a>
+                <a href="/public/news">공지사항</a>
+                <a href="/public/cloud" class="selected">클라우드</a>
+                <a href="/public/link">외부 링크</a>
+            </div>
         </nav>
     </header>
-    <main>
-        main contents
-    </main>
+    <div id="layout">
+        <aside id="sidemenu">
+            <ul>
+                <li><a href="./">악보</a></li>
+                <li><a href="./">장부</a></li>
+                <li><a href="./">인수인계 파일</a></li>
+                <li><a href="./">평가 시트</a></li>
+            </ul>
+        </aside>
+        <main>
+            <div id="content">
+                <h1>악보</h1>
+                <h2>기타</h2>
+                <table>
+                    <tbody>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+                <h2>베이스</h2>
+                <table>
+                    <tbody>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+                <h2>키보드</h2>
+                <table>
+                    <tbody>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+                <h2>드럼</h2>
+                <table>
+                    <tbody>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                        <tr><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>* 악보 관련 문의는 운영진에게 연락 바랍니다.</p>
+        </main>
+    </div>    
 </body>
 </html>

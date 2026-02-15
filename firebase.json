@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "skku-myrock",
     "public": "public",
     "ignore": [
       "firebase.json",
