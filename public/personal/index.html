@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/personal.css">
+</head>
+<body>
+  <div class="personal-container">
+
+    <h2>개인정보</h2>
+
+    <!-- 기본 정보 -->
+    <div class="info-group">
+      <span class="info-label">이름</span>
+      <div class="info-value" id="name"></div>
+    </div>
+
+    <div class="info-group">
+      <span class="info-label">기수</span>
+      <div class="info-value" id="generation"></div>
+    </div>
+
+    <div class="info-group">
+      <span class="info-label">세션</span>
+      <div class="info-value" id="session"></div>
+    </div>
+
+    <div class="info-group">
+      <span class="info-label">이메일</span>
+      <div class="info-value" id="email"></div>
+    </div>
+
+    <!-- 이메일 인증 상태 -->
+    <div class="info-group">
+      <span class="info-label">이메일 인증</span>
+      <div class="info-value" id="email-verified">확인 중...</div>
+    </div>
+
+    <button type="button" id="logout-btn">로그아웃</button>
+
+    <!-- 비밀번호 변경 -->
+    <div class="password-section">
+      <h3>비밀번호 변경</h3>
+
+      <div class="input-group">
+        <input type="password" id="new-password" placeholder="새 비밀번호">
+      </div>
+
+      <div class="input-group">
+        <input type="password" id="confirm-password" placeholder="새 비밀번호 확인">
+      </div>
+
+      <button type="button">
+        비밀번호 변경
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="personal.js"></script>
+</body>
+</html>
