@@ -10,3 +10,10 @@ dist/
 private/
 *service-account*.json
 *credentials*.csv
+
+# Cloudflare Wrangler temporary data / local secrets
+.wrangler/
+.dev.vars
+.dev.vars.*
+*.pem
+.tmp-pages-functions/
