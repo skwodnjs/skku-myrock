@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import typescript from 'typescript';
+
+const source = await readFile(new URL('../src/galleryData.ts', import.meta.url), 'utf8');
+const transpiled = typescript.transpileModule(source, {
+  compilerOptions: {
+    module: typescript.ModuleKind.ESNext,
+    target: typescript.ScriptTarget.ES2022,
+  },
+}).outputText;
+const { photoAlbums } = await import('data:text/javascript;base64,' + Buffer.from(transpiled).toString('base64'));
+const component = await readFile(new URL('../src/PhotoGallery.tsx', import.meta.url), 'utf8');
+const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+test('all requested concerts, events and daily activity albums appear in order', () => {
+  assert.deepEqual(photoAlbums.map(album => [album.category, album.title]), [
+    ['공연', '2026. 01. 15. 모여락 x 아이코닉 연합공연 "White Noise"'],
+    ['공연', '2026. 02. 08. 모여락 x 아망 연합공연'],
+    ['공연', '2026. 05. 16. 모여락 2026 1학기 정기공연'],
+    ['공연', '2026. 07. 18. 2026 모여락 여름 공연'],
+    ['공연', '2026. 08. 22. 소리사랑 x 모여락 여름 연합공연 "Youth on Tape"'],
+    ['공연', '2026. 08. 29. 신록 x 아망 x 모여락 연합공연'],
+    ['행사', '2026년도 자/생/스 새내기 새로배움터'],
+    ['행사', '2026년도 1학기 모여락 MT'],
+    ['일상', '2026년도 1학기 정기공연 구성팀 합주 피드백 모습'],
+    ['일상', '2026. 10. 10. 기타 클래스'],
+  ]);
+});
+test('each album has exactly five empty photo slots and a stable unique key', () => {
+  assert.equal(new Set(photoAlbums.map(album => album.id)).size, 10);
+  assert.ok(photoAlbums.every(album => album.photos.length === 5));
+  assert.ok(photoAlbums.every(album => album.photos.every(src => src === null)));
+  assert.deepEqual(['공연','행사','일상'].map(category => photoAlbums.filter(album => album.category === category).length), [6,2,2]);
+});
+test('gallery cover opens full view with thumbnail selection, carousel navigation and dots', () => {
+  assert.match(component, /aria-label=\{album\.title \+ ', 사진 ' \+ album\.photos\.length \+ '장 전체보기'\}/);
+  assert.match(component, /onClick=\{event => openAlbum\(album, event\)\}/);
+  assert.match(component, /onClick=\{\(\) => goTo\(-1\)\}/);
+  assert.match(component, /onClick=\{\(\) => goTo\(1\)\}/);
+  assert.match(component, /onClick=\{\(\) => setPhotoIndex\(index\)\}/);
+  assert.match(component, /gallery-photo-dots/);
+  assert.match(component, /gallery-thumb-list/);
+  assert.match(component, /aria-modal="true"/);
+  assert.match(component, /event\.key === 'Escape'/);
+  assert.match(component, /event\.key === 'ArrowRight'/);
+  assert.match(component, /onTouchEnd=\{onTouchEnd\}/);
+  assert.match(component, /document\.body\.style\.overflow = 'hidden'/);
+  assert.match(component, /'전체보기'/);
+  assert.doesNotMatch(app.match(/function Gallery\([\s\S]*?function Equipment/)?.[0] ?? '', /\.photo-item|미리보기/);
+});
+test('album placeholders and lightbox have separate styles from the old broken photo items', () => {
+  assert.match(styles, /\.gallery-slot-empty\s*\{[\s\S]*?align-items:\s*center;/);
+  assert.match(styles, /\.gallery-lightbox-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px;/);
+  assert.match(styles, /\.gallery-lightbox-backdrop\s*\{/);
+  assert.match(styles, /\.gallery-photo-dot\.active/);
+  assert.match(styles, /\.gallery-thumb-button\.selected/);
+  assert.match(styles, /@media \(max-width:\s*680px\)/);
+});
