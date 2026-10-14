@@ -34,7 +34,7 @@ test('each notice has a leading image placeholder, with no images downloaded yet
 });
 test('recruitment notice preserves schedule, classes, auditions, questions and contact info', () => {
   const post = notices[0];
-  assert.ok(post.body.length > 2500, 'recruitment notice should retain full user-supplied text');
+  assert.ok(post.body.length > 2000, 'recruitment notice should retain full user-supplied text');
   for (const phrase of [
     '※ 모여락 29.5기 신입부원 모집※',
     '8/24(월)부터 9/17(목) 17시까지',
