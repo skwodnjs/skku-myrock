@@ -41,14 +41,12 @@ export function FinanceLanding({ onDonations, onExpenses }: { onDonations: Nav; 
           <div><span>계좌번호</span><strong>등록 예정</strong></div>
           <div><span>예금주</span><strong>등록 예정</strong></div>
         </div>
-        <p className="finance-bank-pending-message">후원 계좌가 아직 등록되지 않았습니다. 입금 전 운영진에게 계좌 정보를 확인해 주세요.</p>
       </div>
       <div className="finance-privacy-note">
         <LockKeyhole size={19} aria-hidden="true" />
         <div>
           <strong>이름을 공개하지 않고 후원할 수 있습니다.</strong>
-          <p>특정 후원 내역에서 이름을 공개하고 싶지 않다면 입금자명을 <b>홍길동(비공개)</b>와 같이 작성하거나 운영진에게 해당 후원 건의 익명 처리를 요청해 주세요. 익명 처리된 후원은 <b>전체 후원 내역</b>에서 후원자 이름 대신 <b>익명</b>으로 표시됩니다.</p>
-          <p>본인이 후원한 <b>모든 내역</b>을 익명 처리하기를 희망하는 경우 운영진에게 문의해 주세요.</p>
+          <p>특정 후원 내역에서 이름을 공개하고 싶지 않다면 입금자명을 <b>홍길동(비공개)</b>와 같이 작성하거나 운영진에게 해당 후원 건의 익명 처리를 요청해 주세요. 익명 처리된 후원은 <b>전체 후원 내역</b>에서 후원자 이름 대신 <b>익명</b>으로 표시됩니다. 본인이 후원한 <b>모든 내역</b>을 익명 처리하기를 희망하는 경우 운영진에게 문의해 주세요.</p>
           <p>익명 처리 여부와 관계없이, 본인이 후원한 내역은 로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다.</p>
         </div>
       </div>
