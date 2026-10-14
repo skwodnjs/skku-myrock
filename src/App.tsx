@@ -98,12 +98,54 @@ function Home({ navigate, notify }: { navigate: Navigate; notify: Notify }) {
   </>;
 }
 
-function About({ navigate, notify }: { navigate: Navigate; notify: Notify }) {
+const currentOfficers = [
+  { name: '김서연', positions: '회장, 보컬파트장' },
+  { name: '신희수', positions: '부회장' },
+  { name: '배은성', positions: '공연부장, 기타파트장' },
+  { name: '허지원', positions: '총무' },
+  { name: '정해준', positions: '홍보부장' },
+  { name: '김하은', positions: '베이트파트장' },
+  { name: '추서현', positions: '드럼파트장' },
+  { name: '김민현', positions: '키보드파트장' },
+] as const;
+
+function About({ navigate }: { navigate: Navigate }) {
   return <><PageHeading tag="ABOUT MYROCK" title="모여락 소개" description="함께 음악을 만들고 무대에 서는 사람들, 모여락을 소개합니다." />
     <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div><Placeholder label="동아리 대표 사진" /></section>
-    <section className="container section-block"><SectionHeading title="운영진" aside="현재 운영진 소개" /><div className="leadership-grid">{['회장단', '실무단', '파트장'].map((role, i) => <div className="leader-item" key={role}><Placeholder label="운영진 사진" /><div><span className="muted-number">0{i + 1}</span><strong>{role}</strong><p>운영진 정보가 등록될 자리입니다.</p></div></div>)}</div></section>
-    <section className="container section-block"><SectionHeading title="연혁" aside="모여락의 활동 기록" /><div className="archive-timeline"><div><span>연혁</span><p>동아리의 주요 역사를 연도별로 정리합니다.</p></div><div><span>공연 기록</span><p>기억에 남는 무대와 행사를 기록합니다.</p></div></div></section>
-    <section className="container section-block about-social"><SectionHeading title="모여락 채널" /><div className="plain-links"><button type="button" onClick={() => notify()}><Instagram size={19}/> 인스타그램 <ArrowUpRight size={16} /></button><button type="button" onClick={() => notify()}><ExternalLink size={19}/> 유튜브 <ArrowUpRight size={16} /></button></div></section>
+    <section className="container section-block" aria-label="현재 운영진 8명">
+      <SectionHeading title="운영진" aside="현재 운영진 8명" />
+      <div className="leadership-grid">
+        {currentOfficers.map(officer => <article className="leader-item" key={officer.name}>
+          <Placeholder label={`${officer.name} 증명사진`} className="leader-photo" />
+          <div className="leader-description">
+            <h3>{officer.name}</h3>
+            <p>{officer.positions}</p>
+          </div>
+        </article>)}
+      </div>
+    </section>
+    <section className="container section-block">
+      <SectionHeading title="연혁" aside="모여락의 활동 기록" />
+      <div className="archive-timeline">
+        <div><span>199x년</span><p>모여락 창단</p></div>
+        <div><span>2023년</span><p>중앙동아리 승격</p></div>
+      </div>
+    </section>
+    <section className="container section-block about-social">
+      <SectionHeading title="모여락 채널" />
+      <div className="plain-links">
+        <a href="https://www.instagram.com/skku_m.y.rock/" target="_blank" rel="noopener noreferrer" aria-label="인스타그램 @skku_m.y.rock 열기">
+          <Instagram size={19} aria-hidden="true" />
+          <span className="social-link-label">인스타그램 <small>@skku_m.y.rock</small></span>
+          <ArrowUpRight size={16} aria-hidden="true" />
+        </a>
+        <a href="https://www.youtube.com/@SKKUMYRock" target="_blank" rel="noopener noreferrer" aria-label="유튜브 @SKKUMYRock 열기">
+          <ExternalLink size={19} aria-hidden="true" />
+          <span className="social-link-label">유튜브 <small>@SKKUMYRock</small></span>
+          <ArrowUpRight size={16} aria-hidden="true" />
+        </a>
+      </div>
+    </section>
   </>;
 }
 
@@ -330,7 +372,7 @@ function App() {
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} notify={notify}/>}
-      {page==='about'&&<About navigate={navigate} notify={notify}/>}
+      {page==='about'&&<About navigate={navigate}/>}
       {page==='news'&&<News notify={notify}/>}
       {page==='schedule'&&<Schedule notify={notify}/>}
       {page==='gallery'&&<Gallery notify={notify}/>}
