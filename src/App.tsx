@@ -180,14 +180,14 @@ function LoginDialog({ close, notify }: { close: () => void; notify: Notify }) {
       <button type="button" className="dialog-close" onClick={close} aria-label="닫기"><X size={20}/></button>
       <div className="dialog-brand"><img src={logo} alt="" /> <span>모여락</span></div>
       <h2 id="login-heading">회원 로그인</h2>
-      <p>등록된 학번과 개인별 비밀번호로 로그인합니다.</p>
+      <p>신규 발급 계정은 학번 10자리가 초기 비밀번호입니다. 기존 회원은 설정한 비밀번호로 로그인해 주세요.</p>
       <form onSubmit={submit}>
         <label>학번<input type="text" inputMode="numeric" maxLength={10} autoComplete="username" placeholder="학번 10자리" value={studentId} onChange={event=>setStudentId(event.target.value.replace(/\D/g,''))} required /></label>
         <label>비밀번호<input type="password" autoComplete="current-password" placeholder="비밀번호" value={password} onChange={event=>setPassword(event.target.value)} required /></label>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button button-primary" disabled={busy}>{busy?'로그인 중...':'로그인'} <ArrowRight size={17}/></button>
       </form>
-      <p className="login-note"><CircleHelp size={15}/> 계정 발급은 운영진에게 문의해 주세요. 비밀번호는 내 정보에서 변경할 수 있습니다.</p>
+      <p className="login-note"><CircleHelp size={15}/> 로그인에 문제가 있거나 비밀번호를 잊었다면 운영진에게 문의해 주세요. 로그인 후 내 정보에서 비밀번호를 변경할 수 있습니다.</p>
     </div>
   </div>;
 }
