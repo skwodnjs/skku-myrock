@@ -66,7 +66,7 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (rawUrl, options={}) => {
     const url = new URL(String(rawUrl));
-    const body = options.body ? JSON.parse(String(options.body)) : {};
+    const body = typeof options.body === 'string' && options.body.startsWith('{') ? JSON.parse(options.body) : {};
     const response = (data,status=200) => new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'max-age=900'}});
     if (url.pathname.includes('/service_accounts/v1/jwk/'))return response({keys:[publicKey]});
     if (url.hostname==='oauth2.googleapis.com')return response({access_token:'test-access-token',expires_in:3600});
