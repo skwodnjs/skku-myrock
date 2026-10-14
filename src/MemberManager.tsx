@@ -28,6 +28,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   const [preview, setPreview] = useState<NewMember[]>([]);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [individual, setIndividual] = useState<NewMember>(blankMember);
+  const [individualPositionsText, setIndividualPositionsText] = useState('');
   const [selectedUid, setSelectedUid] = useState('');
   const [editing, setEditing] = useState<MemberRecord | null>(null);
   const [positionText, setPositionText] = useState('');
@@ -167,12 +168,12 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
               </div>}
             </div>
             <div className="member-single"><h3>한 명씩 등록</h3>
-              <form onSubmit={event => { event.preventDefault(); void submit([individual]); }} className="member-form">
+              <form onSubmit={event => { event.preventDefault(); void submit([{...individual, positions: individualPositionsText.split('|').map(p => p.trim()).filter(Boolean)}]); }} className="member-form">
                 <div className="form-grid">
                   <label>학번<input inputMode="numeric" maxLength={10} value={individual.studentId} placeholder="학번 10자리" onChange={event => setIndividual(previous => ({...previous, studentId: event.target.value.replace(/\D/g, '')}))} required /></label>
                   <label>이름<input value={individual.name} placeholder="이름" onChange={event => setIndividual(previous => ({...previous, name: event.target.value}))} required /></label>
                   <label>기수<input value={individual.generation} placeholder="예: 29 또는 27.5" onChange={event => setIndividual(previous => ({...previous, generation: event.target.value}))} required /></label>
-                  <label>직책 (선택)<input value={individual.positions.join(' | ')} placeholder="여러 직책은 |로 구분" onChange={event => setIndividual(previous => ({...previous, positions: event.target.value.split('|').map(p => p.trim()).filter(Boolean)}))}/></label>
+                  <label>직책 (선택)<input value={individualPositionsText} placeholder="여러 직책은 |로 구분" onChange={event => setIndividualPositionsText(event.target.value)}/></label>
                 </div>
                 <div className="member-session-editor"><strong>세션</strong><div>{sessionList.map(session => <label key={session}><input type="checkbox" checked={individual.sessions.includes(session)} onChange={() => setIndividual(previous => ({...previous, sessions: previous.sessions.includes(session) ? previous.sessions.filter(item => item !== session) : [...previous.sessions, session]}))}/>{session}</label>)}</div></div>
                 <button type="submit" className="button button-primary" disabled={busy || individual.studentId.length !== 10 || individual.sessions.length === 0}>{busy ? '등록 중...' : '회원 등록'} <ArrowRight size={15}/></button>
