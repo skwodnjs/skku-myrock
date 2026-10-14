@@ -1,6 +1,6 @@
 # MYROCK · 모여락
 
-성균관대학교 밴드 동아리 모여락의 홈페이지 UI 초안입니다.
+성균관대학교 밴드 동아리 모여락 홈페이지 UI 시안입니다.
 
 ## 실행
 
@@ -9,15 +9,13 @@ npm install
 npm run dev
 ```
 
-## 배포
+`npm run build`는 정적 사이트를 `dist/`에 빌드합니다. GitHub Actions는 `main`에 push할 때 Firebase Hosting의 `skku-myrock`에 배포합니다.
 
-`main` 브랜치에 push하면 GitHub Actions에서 `npm install` → `npm run build`를 실행한 뒤 `dist/`를 기존 Firebase Hosting 프로젝트 `skku-myrock`에 배포합니다.
+## 구성
 
-## 구현 범위
+- 홈: “여기로, 모여락!”, 대표 이미지 자리, 최근 공지
+- 소개 / 공지사항 / 합주 시간 조율 / 포토존 / 장비 대여
+- 후원·회계 / 인수인계 / 회원 관리
+- 회원 로그인 모달 및 관리자 화면 레이아웃
 
-- 반응형 홈, 소개, 일정 조율, 공지사항, 포토존, 장비 대여, 회계, 인수인계, 회원 관리 화면
-- 실제 사진 대신 `☒` 자리 표시자 사용
-- 모바일 메뉴, 화면 이동, 예시 공지 필터, 로그인 모달 등의 UI 동작
-- **현재 로그인, Firestore 저장, 일정 확정, 신청·승인 등은 연결되지 않은 화면 초안입니다.**
-
-실제 회원 명단을 등록하기 전에 Firebase Authentication, Firestore Security Rules, Storage Rules, 권한 검증을 구현해야 합니다.
+이미지 자리에는 `☒` placeholder를 배치했고, 기존 로고에서 검정 배경을 제거한 투명 이미지로 브랜드를 표시합니다. 현재는 **화면 미리보기**로, 인증/데이터베이스/서버 기능은 연결하지 않았습니다. 모든 예시 콘텐츠는 실제 운영 정보가 아닙니다.
