@@ -831,7 +831,7 @@
   display: grid;
   grid-template-columns: 1fr 1.45fr 1fr;
   gap: 24px;
-  padding: 28px 0 24px;
+  padding: 28px 0 0;
 }
 .finance-bank-fields > div { min-width: 0; }
 .finance-bank-fields > div > span {
@@ -985,7 +985,7 @@
   .finance-support-intro h2 { font-size: 26px; margin-bottom: 24px; }
   .finance-support-intro > p { font-size: 12px; }
   .finance-bank-card { padding: 23px 19px; }
-  .finance-bank-fields { grid-template-columns: 1fr; padding: 20px 0; gap: 19px; }
+  .finance-bank-fields { grid-template-columns: 1fr; padding: 20px 0 0; gap: 19px; }
   .finance-bank-fields > div > span { margin-bottom: 6px; }
   .finance-bank-fields > div > strong { font-size: 18px; }
   .finance-privacy-note { padding: 18px 15px; }
