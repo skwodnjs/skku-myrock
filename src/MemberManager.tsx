@@ -25,6 +25,9 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const loadingPageRef = useRef(false);
+  const loadSentinelRef = useRef<HTMLDivElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -44,29 +47,57 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
   const [positionText, setPositionText] = useState('');
 
   async function refresh() {
+    if (loadingPageRef.current) return;
+    loadingPageRef.current = true;
     setLoading(true);
+    setLoadError(false);
     setError('');
     try {
       const page = await loadMembers();
       setMembers(page.members);
       setCursor(page.nextCursor);
-    } catch (err) { setError(callError(err)); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(callError(err));
+      setLoadError(true);
+    } finally {
+      loadingPageRef.current = false;
+      setLoading(false);
+    }
   }
   useEffect(() => { void refresh(); }, []);
-  
+
   async function loadMore() {
-    if (!cursor || loading) return;
+    if (!cursor || loadingPageRef.current) return;
+    loadingPageRef.current = true;
     setLoading(true);
     setError('');
     try {
       const page = await loadMembers(cursor);
-      setMembers(previous => [...previous, ...page.members.filter(member => !previous.some(existing => existing.uid === member.uid))]);
+      setMembers(previous => {
+        const seen = new Set(previous.map(item => item.uid));
+        return [...previous, ...page.members.filter(item => !seen.has(item.uid))];
+      });
       setCursor(page.nextCursor);
-    } catch (err) { setError(callError(err)); }
-    finally { setLoading(false); }
+      setLoadError(false);
+    } catch (err) {
+      setError('다음 부원 명단을 불러오지 못했습니다. 다시 시도해 주세요. ' + callError(err));
+      setLoadError(true); // Avoid infinite retries when the sentinel stays visible.
+    } finally {
+      loadingPageRef.current = false;
+      setLoading(false);
+    }
   }
 
+  useEffect(() => {
+    if (tab !== 'list' || !cursor || loading || loadError || busy) return;
+    const target = loadSentinelRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) void loadMore();
+    }, { rootMargin: '300px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [tab, cursor, loading, loadError, busy]);
 
   async function inspectPreview(membersToCheck: NewMember[], requestId: number) {
     setCheckingPreview(true);
@@ -188,7 +219,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
         {message && <p className="member-success member-feedback" role="status">{message}</p>}
 
         {tab === 'list' && <>
-          <div className="member-panel-top"><div><h2>부원 명단</h2><p>부원을 이름 가나다순으로 표시합니다. 한 번에 최대 100명씩 불러오며 권한에 따라 수정 가능한 항목이 다릅니다.</p></div>
+          <div className="member-panel-top"><div><h2>부원 명단</h2><p>전체 가나다순을 유지하면서 스크롤 위치에 맞춰 30명씩 자동으로 불러옵니다. 권한에 따라 수정 가능한 항목이 다릅니다.</p></div>
             {isPresident && <button type="button" className="button button-primary" onClick={() => setTab('add')}><Plus size={16}/> 부원 등록</button>}</div>
           <div className="member-toolbar">
             <label className="input-search member-search"><Search size={16}/><input placeholder="학번, 이름, 기수, 세션 검색" aria-label="회원 검색" value={query} onChange={event => setQuery(event.target.value)}/></label>
@@ -246,8 +277,12 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
             {!loading && filtered.length === 0 && <div className="member-empty"><Users size={19}/> {members.length ? '현재 불러온 명단에서 검색 결과가 없습니다.' : '등록된 부원이 없습니다.'}</div>}
             {loading && <div className="member-empty">회원 정보를 불러오는 중입니다...</div>}
           </div>
-          {cursor && <button type="button" className="outline-action member-loadmore" onClick={() => void loadMore()} disabled={loading}>부원 더 보기 <ArrowRight size={15}/></button>}
-          {cursor && <p className="form-hint">검색은 현재 불러온 명단에 적용됩니다. 더 많은 부원을 찾으려면 '부원 더 보기'를 눌러 주세요.</p>}
+          {cursor && <>
+            <div ref={loadSentinelRef} className="member-scroll-sentinel" aria-hidden="true" />
+            {loading && <p className="member-scroll-status" role="status">다음 부원 명단을 불러오는 중입니다...</p>}
+            {loadError && <button type="button" className="outline-action member-loadmore" disabled={loading} onClick={() => void loadMore()}>불러오기 다시 시도 <RefreshCw size={15}/></button>}
+            <p className="form-hint">스크롤을 내리면 다음 명단이 자동으로 표시됩니다. 검색은 현재 불러온 명단에 적용됩니다.</p>
+          </>}
           <p className="form-hint">시스템 관리자 계정은 보호되며, 본인의 권한 변경·계정 삭제·비밀번호 초기화도 제한됩니다.</p>
         </>}
 
