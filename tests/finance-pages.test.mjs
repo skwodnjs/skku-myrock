@@ -33,8 +33,8 @@ test('account is explicitly unconfigured and never advertises an invented payabl
   assert.ok(!/\b\d{2,4}-\d{2,6}-\d{3,9}\b/.test(finance));
 });
 test('bank fields have no bottom padding at desktop and mobile widths', () => {
-  assert.match(styles, /\\.finance-bank-fields\\s*\\{[^}]*padding:\\s*28px 0 0;/s);
-  assert.match(styles, /@media \\(max-width:\\s*680px\\)[\\s\\S]*?\\.finance-bank-fields\\s*\\{[^}]*padding:\\s*20px 0 0;/);
+  assert.match(styles, /\.finance-bank-fields\s*\{[^}]*padding:\s*28px 0 0;/s);
+  assert.match(styles, /@media \(max-width:\s*680px\)[\s\S]*?\.finance-bank-fields\s*\{[^}]*padding:\s*20px 0 0;/);
 });
 
 test('anonymous donors are public as 익명 and their own donations are user-private after login', () => {
