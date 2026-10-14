@@ -46,6 +46,19 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 export async function loadMembers(cursor: string | null = null) {
   return api<MemberPage>('list' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
 }
+export type PreviewResult = { studentId: string; status: 'new' | 'existing' };
+export async function previewMembers(members: NewMember[]): Promise<PreviewResult[]> {
+  const found: PreviewResult[] = [];
+  for (let index = 0; index < members.length; index += 5) {
+    const chunk = members.slice(index, index + 5);
+    const page = await api<{ results: PreviewResult[] }>('preview', { members: chunk });
+    if (!Array.isArray(page.results) || page.results.length !== chunk.length) {
+      throw new Error('미리보기 결과의 일부가 누락되었습니다.');
+    }
+    found.push(...page.results);
+  }
+  return found;
+}
 export async function registerMembers(
   members: NewMember[],
   onProgress?: (completed: number, results: ImportResult[]) => void,
