@@ -14,6 +14,7 @@ import { onRequestPost as sessionsHandler } from '../functions/api/members/sessi
 import { onRequestPost as detailsHandler } from '../functions/api/members/details.js';
 import { onRequestPost as resetHandler } from '../functions/api/members/reset-password.js';
 import { onRequestPost as deleteHandler } from '../functions/api/members/delete.js';
+import { onRequestPost as purgeHandler, RESET_CONFIRMATION } from '../functions/api/members/purge.js';
 import { requireFreshVersion, requireMutableTarget } from '../functions/_lib/google.js';
 
 const alice = {
@@ -68,7 +69,7 @@ test('all membership API routes reject requests without login', async () => {
   const permissions = new Request('https://skku-myrock.pages.dev/api/members/permissions', {
     method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({uid:'abcdefghij_12',role:'president',handoverAccess:false,positions:[]}),
   });
-  for (const [handler, request] of [[listHandler,get],[previewHandler,preview],[registerHandler,post],[permissionHandler,permissions],[sessionsHandler,post],[detailsHandler,post],[resetHandler,post],[deleteHandler,post]]) {
+  for (const [handler, request] of [[listHandler,get],[previewHandler,preview],[registerHandler,post],[permissionHandler,permissions],[sessionsHandler,post],[detailsHandler,post],[resetHandler,post],[deleteHandler,post],[purgeHandler,post]]) {
     const response = await handler({request,env:{}});
     assert.equal(response.status,401);
     assert.equal(response.headers.get('cache-control'),'no-store');
@@ -123,4 +124,14 @@ test('protected admin account and stale versions cannot be modified by others', 
   assert.throws(() => requireMutableTarget(caller,{fields:{}},caller.uid,{protectSelf:true}), /본인/);
   assert.throws(() => requireFreshVersion(target,'2026-10-14T13:00:00Z'),/새로고침/);
   assert.doesNotThrow(() => requireFreshVersion(target,target.updateTime));
+});
+
+test('development reset route requires a signed login before accepting confirmation', async () => {
+  const request = new Request('https://skku-myrock.pages.dev/api/members/purge', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({confirmation: RESET_CONFIRMATION}),
+  });
+  const response = await purgeHandler({request,env:{}});
+  assert.equal(response.status,401);
+  assert.equal(response.headers.get('cache-control'),'no-store');
 });
