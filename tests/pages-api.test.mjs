@@ -7,6 +7,7 @@ import {
 import { onRequestPost as registerHandler } from '../functions/api/members/register.js';
 import { onRequestPost as permissionHandler } from '../functions/api/members/permissions.js';
 import { onRequestGet as listHandler } from '../functions/api/members/list.js';
+import { onRequestGet as healthHandler } from '../functions/api/health.js';
 import { onRequestPost as previewHandler } from '../functions/api/members/preview.js';
 
 const alice = {
@@ -66,4 +67,16 @@ test('all membership API routes reject requests without login', async () => {
     assert.equal(response.status,401);
     assert.equal(response.headers.get('cache-control'),'no-store');
   }
+});
+
+test('Pages health route reports deployment and presence of encrypted binding only', async () => {
+  const response = healthHandler({ env: { FIREBASE_SERVICE_ACCOUNT: 'present' } });
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(data, {
+    service: 'myrock-pages-api',
+    deployed: true,
+    firebaseSecretConfigured: true,
+  });
+  assert.equal(JSON.stringify(data).includes('present'), false);
 });
