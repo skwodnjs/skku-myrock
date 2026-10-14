@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { ArrowRight, Check, Download, FileSpreadsheet, Plus, RefreshCw, Search, ShieldCheck, Upload, Users } from 'lucide-react';
+import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
 import type { MemberRole, Session } from './firebase';
 import {
-  callError, downloadExampleCsv, loadMembers,
-  formatMemberValues, parseMembersCsv, previewMembers, registerMembers, saveMemberPermissions, splitMemberValues,
+  callError, deleteMember, downloadExampleCsv, formatMemberValues, loadAllMembers,
+  parseMembersCsv, previewMembers, registerMembers, resetMemberPassword,
+  saveMemberDetails, saveMemberPermissions, saveMemberSessions, splitMemberValues,
 } from './memberAdmin';
 import type { ImportResult, MemberRecord, NewMember } from './memberAdmin';
 
@@ -14,11 +15,14 @@ const roleNames: Record<MemberRole, string> = {
 };
 const blankMember: NewMember = { studentId: '', name: '', generation: '', sessions: ['보컬'], positions: [] };
 type Tab = 'list' | 'add';
+type EditMode = 'sessions' | 'details' | 'permissions';
+type ManagementLevel = 'part_leader' | 'staff' | 'president';
 
-export default function MemberManager({ currentUid }: { currentUid: string }) {
+export default function MemberManager({ currentUid, level }: { currentUid: string; level: ManagementLevel }) {
+  const isPresident = level === 'president';
+  const canEditDetails = level !== 'part_leader';
   const [tab, setTab] = useState<Tab>('list');
   const [members, setMembers] = useState<MemberRecord[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
@@ -35,30 +39,18 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   const [individual, setIndividual] = useState<NewMember>(blankMember);
   const [individualPositionsText, setIndividualPositionsText] = useState('');
   const [editing, setEditing] = useState<MemberRecord | null>(null);
+  const [editMode, setEditMode] = useState<EditMode>('sessions');
   const [positionText, setPositionText] = useState('');
 
   async function refresh() {
     setLoading(true);
     setError('');
     try {
-      const page = await loadMembers();
-      setMembers(page.members);
-      setCursor(page.nextCursor);
+      setMembers(await loadAllMembers());
     } catch (err) { setError(callError(err)); }
     finally { setLoading(false); }
   }
   useEffect(() => { void refresh(); }, []);
-
-  async function more() {
-    if (!cursor || loading) return;
-    setLoading(true);
-    try {
-      const page = await loadMembers(cursor);
-      setMembers(previous => [...previous, ...page.members]);
-      setCursor(page.nextCursor);
-    } catch (err) { setError(callError(err)); }
-    finally { setLoading(false); }
-  }
 
   async function inspectPreview(membersToCheck: NewMember[], requestId: number) {
     setCheckingPreview(true);
@@ -115,8 +107,10 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
     finally { setBusy(false); }
   }
 
-  function startEdit(member: MemberRecord) {
+  function startEdit(member: MemberRecord, mode: EditMode) {
+    if (member.protected || (mode === 'details' && !canEditDetails) || (mode === 'permissions' && !isPresident)) return;
     setEditing({ ...member });
+    setEditMode(mode);
     setPositionText(formatMemberValues(member.positions));
     setError(''); setMessage('');
   }
@@ -126,13 +120,37 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
     if (!editing || busy) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const updated = {
-        ...editing,
-        positions: splitMemberValues(positionText),
-      };
-      await saveMemberPermissions(updated);
+      const updated = { ...editing, positions: splitMemberValues(positionText) };
+      if (editMode === 'sessions') await saveMemberSessions(updated, updated.sessions);
+      else if (editMode === 'details') await saveMemberDetails(updated);
+      else if (isPresident) await saveMemberPermissions(updated);
+      setMessage(`\${editing.name} 부원의 정보를 저장했습니다.`);
       setEditing(null);
-      setMessage(`${editing.name} 회원의 권한과 직책을 변경했습니다.`);
+      await refresh();
+    } catch (err) { setError(callError(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function resetPassword(member: MemberRecord) {
+    if (!isPresident || busy || member.protected || member.uid === currentUid) return;
+    if (!window.confirm(`\${member.name} 부원의 비밀번호를 현재 학번(\${member.studentId})으로 초기화할까요? 기존 비밀번호는 사용할 수 없게 됩니다.`)) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await resetMemberPassword(member);
+      setMessage(`\${member.name} 부원의 비밀번호를 현재 학번 10자리로 초기화했습니다.`);
+    } catch (err) { setError(callError(err)); }
+    finally { setBusy(false); }
+  }
+
+  async function removeMember(member: MemberRecord) {
+    if (!isPresident || busy || member.protected || member.uid === currentUid) return;
+    const typed = window.prompt(`\${member.name} (\${member.studentId}) 부원을 완전히 삭제하려면 학번 10자리를 입력해 주세요.\\nFirebase 로그인 계정과 부원 프로필이 삭제됩니다.`);
+    if (typed !== member.studentId) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await deleteMember(member);
+      setEditing(null);
+      setMessage(`\${member.name} 부원의 계정과 프로필을 삭제했습니다.`);
       await refresh();
     } catch (err) { setError(callError(err)); }
     finally { setBusy(false); }
