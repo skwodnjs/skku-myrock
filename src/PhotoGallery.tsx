@@ -24,6 +24,7 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
   const [photoIndex, setPhotoIndex] = useState(0);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
+  const thumbnailListRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -81,6 +82,24 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
     };
   }, [activeAlbum]);
 
+  useEffect(() => {
+    // With hidden scrollbars, automatically keep the selected thumbnail in view
+    // as visitors change photos using arrows, keyboard or touch gestures.
+    if (!activeAlbum) return;
+    const list = thumbnailListRef.current;
+    const selected = list?.querySelector<HTMLElement>('.gallery-thumb-button.selected');
+    if (!list || !selected) return;
+    const viewport = list.getBoundingClientRect();
+    const image = selected.getBoundingClientRect();
+    if (window.matchMedia('(max-width: 680px)').matches) {
+      if (image.left < viewport.left) list.scrollLeft += image.left - viewport.left;
+      else if (image.right > viewport.right) list.scrollLeft += image.right - viewport.right;
+    } else {
+      if (image.top < viewport.top) list.scrollTop += image.top - viewport.top;
+      else if (image.bottom > viewport.bottom) list.scrollTop += image.bottom - viewport.bottom;
+    }
+  }, [activeAlbum, photoIndex]);
+
   function onTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
     const touch = event.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
@@ -137,7 +156,7 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
       if (event.target === event.currentTarget) closeAlbum();
     }}>
       <section ref={dialogRef} className="gallery-lightbox" role="dialog" aria-modal="true"
-        aria-labelledby="gallery-viewer-title" aria-describedby="gallery-viewer-hint"
+        aria-labelledby="gallery-viewer-title"
         onKeyDown={onModalKeyDown}>
         <header className="gallery-lightbox-header">
           <div className="gallery-lightbox-titles">
@@ -173,7 +192,7 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
 
           <aside className="gallery-thumb-panel" aria-label="사진 썸네일 목록">
             <div className="gallery-thumb-heading">전체 사진 <span>{count}</span></div>
-            <div className="gallery-thumb-list">
+            <div ref={thumbnailListRef} className="gallery-thumb-list">
               {activeAlbum.photos.map((src, index) => <button key={index} type="button"
                 className={'gallery-thumb-button' + (index === photoIndex ? ' selected' : '')}
                 aria-pressed={index === photoIndex}
@@ -186,7 +205,6 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
           </aside>
         </div>
 
-        <p id="gallery-viewer-hint" className="gallery-viewer-hint">좌우 화살표 또는 사진을 밀어서 넘길 수 있습니다. Esc 키로 닫을 수 있습니다.</p>
       </section>
     </div>}
   </section>;
