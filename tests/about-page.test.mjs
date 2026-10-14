@@ -16,15 +16,23 @@ test('club introduction lists all eight current officers in the requested order'
     ['배은성', '공연부장, 기타파트장'],
     ['허지원', '총무'],
     ['정해준', '홍보부장'],
-    ['김하은', '베이트파트장'],
+    ['김하은', '베이스파트장'],
     ['추서현', '드럼파트장'],
     ['김민현', '키보드파트장'],
   ]);
 });
-test('officers have photo placeholders with consistent portrait ratio', () => {
+test('the officer introduction uses the 28th cohort label without a headcount', () => {
+  assert.match(app, /<SectionHeading title="운영진" aside="28기 운영진 소개"\s*\/>/);
+  assert.doesNotMatch(app, /현재 운영진 8명/);
+});
+
+test('officers have compact photos on the left and text on the right', () => {
   assert.match(app, /currentOfficers\.map\(officer/);
-  assert.match(app, /<Placeholder label=\{\x60\$\{officer\.name\} 증명사진\x60\} className="leader-photo"\s*\/>/);
+  assert.match(app, /<Placeholder label="사진" className="leader-photo"\s*\/>/);
   assert.match(stylesheet, /\.leader-item \.leader-photo\s*\{[^}]*aspect-ratio:\s*3\s*\/\s*4/s);
+  assert.match(stylesheet, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(stylesheet, /grid-template-columns:\s*76px minmax\(0,\s*1fr\)/);
+  assert.match(stylesheet, /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.leadership-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 });
 test('club history contains just the two given milestones', () => {
   const history = app.match(/<SectionHeading title="연혁"([\s\S]*?)<\/section>/)?.[1] ?? '';
