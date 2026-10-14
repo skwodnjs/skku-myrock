@@ -15,6 +15,7 @@ import logo from './logo-transparent.png';
 import MemberManager from './MemberManager';
 import { purgeAllOtherMembers } from './memberAdmin';
 import PasswordChange from './PasswordChange';
+import PhotoGallery from './PhotoGallery';
 
 type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
@@ -174,14 +175,9 @@ function Schedule({ notify }: { notify: Notify }) {
 }
 
 function Gallery({ notify }: { notify: Notify }) {
-  const [filter, setFilter] = useState('전체');
-  const items = [
-    { label:'공연 사진', category:'공연' }, { label:'무대 기록',category:'공연' },
-    { label:'MT 사진',category:'행사' }, { label:'동아리 활동 사진',category:'일상' },
-    { label:'합주 사진',category:'일상' }, { label:'행사 사진',category:'행사' },
-  ];
-  return <><PageHeading tag="PHOTO ARCHIVE" title="포토존" description="공연부터 일상까지, 모여락의 순간들을 모아두는 공간입니다." />
-    <section className="container section-block"><div className="toolbar toolbar-bottom"><div className="tabs">{['전체','공연','행사','일상'].map(c => <button type="button" key={c} className={filter === c ? 'active' : ''} onClick={() => setFilter(c)}>{c}</button>)}</div><button type="button" className="button button-primary" onClick={() => notify()}><Plus size={16}/> 사진 등록</button></div><div className="photo-grid">{items.filter(item => filter === '전체' || item.category === filter).map(item => <button type="button" className="photo-item" key={item.label} onClick={() => notify()}><Placeholder label={item.label} /><div><strong>{item.label}</strong><span>{item.category} · 미리보기</span><ArrowUpRight size={15} /></div></button>)}</div></section>
+  return <>
+    <PageHeading tag="PHOTO ARCHIVE" title="포토존" description="공연부터 일상까지, 모여락의 순간들을 모아두는 공간입니다." />
+    <PhotoGallery onRegister={() => notify('사진 등록 기능은 추후 연결될 예정입니다. 현재는 앨범별 사진 뷰어를 이용할 수 있습니다.')} />
   </>;
 }
 
