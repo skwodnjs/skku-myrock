@@ -73,7 +73,11 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
     if (url.hostname==='firestore.googleapis.com') {
       const slash = url.pathname.lastIndexOf('/users');
       const suffix = url.pathname.slice(slash+'/users'.length);
-      if (suffix==='')return response({documents:[...docs.values()],nextPageToken:null});
+      if (suffix==='') {
+        assert.equal(url.searchParams.get('orderBy'),'name asc, __name__ asc');
+        assert.equal(url.searchParams.get('pageSize'),'100');
+        return response({documents:[...docs.values()],nextPageToken:null});
+      }
       const selected = decodeURIComponent(suffix.slice(1));
       if (options.method === 'PATCH') {
         const old=docs.get(selected);
