@@ -1,4 +1,4 @@
-import { ApiError, AUTH_ROOT, FIRESTORE_ROOT, PROJECT_ID, docFields, reject } from './shared.js';
+import { ApiError, AUTH_ROOT, FIRESTORE_ROOT, PROJECT_ID, canPerform, docFields, reject } from './shared.js';
 
 const encoder = new TextEncoder();
 let keysCache = null;
@@ -142,14 +142,30 @@ export async function getFirestoreDocument(env, uid) {
   if (!result.ok) throw new Error('Firestore get failed ' + result.status);
   return result.data;
 }
-export async function assertAdmin(request, env) {
+export async function assertAccess(request, env, requiredRole = 'part_leader') {
   const claims = await verifyFirebaseToken(request);
   const profile = await getFirestoreDocument(env, claims.sub);
-  if (!profile) reject('등록된 회원 프로필이 없습니다.', 403);
+  if (!profile) reject('등록된 부원 프로필이 없습니다.', 403);
   const data = docFields(profile);
   const superadmin = claims.superadmin === true && data.superadmin === true;
-  if (!superadmin && data.role !== 'president') reject('회장단 또는 시스템 관리자만 회원을 관리할 수 있습니다.', 403);
-  return { uid: claims.sub, superadmin, profile };
+  const caller = { uid: claims.sub, superadmin, role: data.role ?? 'member', profile };
+  // An OB handover flag grants no member-directory access by itself.
+  if (!canPerform(caller, requiredRole)) reject('이 작업을 수행할 운영진 권한이 없습니다.', 403);
+  return caller;
+}
+export async function assertAdmin(request, env) {
+  return assertAccess(request, env, 'president');
+}
+export function requireMutableTarget(caller, target, uid, { protectSelf = false } = {}) {
+  if (protectSelf && caller.uid === uid) reject('본인 계정에 이 작업을 수행할 수 없습니다.', 403);
+  if (!target) reject('해당 부원을 찾지 못했습니다.', 404);
+  if (docFields(target).superadmin === true) reject('시스템 관리자 계정은 이 화면에서 변경할 수 없습니다.', 403);
+  return docFields(target);
+}
+export function requireFreshVersion(target, expectedUpdateTime) {
+  if (!target.updateTime || target.updateTime !== expectedUpdateTime) {
+    reject('다른 관리자가 부원 정보를 수정했습니다. 명단을 새로고침한 뒤 다시 시도해 주세요.', 409);
+  }
 }
 export async function lookupAccount(env, email) {
   const result = await googleRequest(env, AUTH_ROOT + '/accounts:lookup', {
@@ -176,4 +192,19 @@ export async function createAccount(env, email, name, password) {
 export async function deleteAccount(env, uid) {
   const result = await googleRequest(env, AUTH_ROOT + '/accounts:delete', { method: 'POST', body: { localId: uid } });
   if (!result.ok) throw new Error('Firebase Auth cleanup failed ' + result.status);
+}
+
+// Server-side administration: do not accept user-supplied OAuth access tokens.
+export async function lookupAccountByUid(env, uid) {
+  const result = await googleRequest(env, AUTH_ROOT + '/accounts:lookup', {
+    method: 'POST', body: { localId: [uid] },
+  });
+  if (!result.ok) throw new Error('Firebase Auth user lookup failed ' + result.status);
+  return result.data.users?.[0] ?? null;
+}
+export async function updateAccount(env, uid, properties) {
+  const result = await googleRequest(env, AUTH_ROOT + '/accounts:update', {
+    method: 'POST', body: { localId: uid, ...properties },
+  });
+  return result;
 }
