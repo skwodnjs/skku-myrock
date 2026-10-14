@@ -8,7 +8,7 @@ import type { FormEvent, ReactNode } from 'react';
 import {
   ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronDown,
   CircleHelp, ClipboardList, ExternalLink, FileText, Instagram,
-  LockKeyhole, Mail, Menu, Plus, Search, ShieldCheck, Users, X, UserRound, LogOut,
+  LockKeyhole, Mail, Menu, Plus, Search, Users, X, UserRound, LogOut,
 } from 'lucide-react';
 import logo from './logo-transparent.png';
 import MemberManager from './MemberManager';
