@@ -1,108 +1,114 @@
 # 모여락 홈페이지
 
-성균관대학교 중앙 밴드 동아리 **모여락** 홈페이지. React + Vite + Firebase Hosting / Authentication / Firestore / Cloud Functions.
+성균관대학교 중앙 밴드 동아리 모여락. **Cloudflare Pages(정적 홈페이지 및 관리자 API)** + **Firebase Auth/Firestore(Spark 무료)** 구성.
 
-## 로컬 실행
+- 회원용 홈페이지: Cloudflare Pages 프로젝트의 `*.pages.dev` 주소
+- 인증: 기존 Firebase Authentication 유지 (학번 + 비밀번호)
+- 데이터: 기존 Firestore 유지
+- 회장단 API: Cloudflare Pages Functions `/api/members/*` (기존 Firebase Cloud Functions는 사용하지 않음)
 
-Node.js 22 또는 24 권장.
+## 1. Cloudflare Pages 최초 연결
 
-```bash
-npm install
-npm run build
-npm run dev
-```
+Cloudflare Dashboard → **Workers & Pages → Pages → Connect to Git**에서 GitHub `skwodnjs/skku-myrock` 저장소를 연결합니다.
 
-GitHub `main`에 푸시하면 기존 GitHub Actions가 **Hosting만** 배포합니다.
-**Cloud Functions와 Firestore Rules는 자동 배포되지 않습니다.** 서버를 배포하기 전 회원 관리 화면에서는 연결 오류가 표시됩니다.
+| 항목 | 설정 |
+|---|---|
+| Project name | `skku-myrock` (사용 가능한 경우) |
+| Production branch | `main` |
+| Root directory | 저장소 루트 `/` |
+| Framework | React (Vite) |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Node.js | 22 이상 |
 
-## 새 회원 관리 기능 배포 (최초 한 번)
+이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/register`, `/api/members/permissions` API를 자동으로 배포합니다.
 
-1. Firebase Authentication → 로그인 방법에서 이메일/비밀번호 사용.
-2. Firebase Cloud Functions를 사용하려면 **Blaze(사용량 기반) 요금제**와 필요한 Google Cloud API 활성화가 필요할 수 있습니다. 요금/할당량을 검토해 주세요.
-3. 프로젝트 폴더에서 Firebase CLI로 로그인:
-   ```bash
-   npx firebase-tools login
-   npx firebase-tools use skku-myrock
-   ```
-   `firebase use`가 필요 없다면 `--project`를 지정해도 됩니다.
-4. 프로젝트의 최신 코드 가져오기: `git pull --ff-only origin main`. 작업 중인 로컬 파일이 있다면 `git status`로 먼저 확인하고 충돌을 해결하세요. `private/`에 보관된 개인 정보는 Git에 올리지 마세요.
-5. Cloud Functions 의존성 설치 및 서버 배포:
-   ```bash
-   npm --prefix functions install
-   npm --prefix functions run check
-   npx firebase-tools deploy --only functions --project skku-myrock
-   ```
-6. Firestore 규칙이 이미 배포되어 있더라도 변경된 버전을 적용해야 할 때는 **기존 데이터 및 규칙을 검토한 뒤**:
-   ```bash
-   npx firebase-tools deploy --only firestore:rules --project skku-myrock
-   ```
-   현재 규칙은 본인 프로필 `get`과 세션 수정만 허용하며, 타인 명단은 브라우저에서 직접 조회할 수 없습니다. 서버 함수만 관리자 권한으로 조회합니다.
+`public/_routes.json`은 Vite가 `dist/_routes.json`으로 복사합니다. **`/api/*`만 Pages Functions 요청으로 집계**하고 HTML/CSS/JS/정적 이미지 요청은 Pages 정적 자산으로 제공하도록 지정합니다.
 
-이 프로젝트의 Function 지역은 `asia-northeast3`(서울)이며 런타임은 Node.js 22입니다.
+기존 Firebase Hosting GitHub Actions는 제거했습니다. 예전에 배포된 `skku-myrock.web.app` 주소는 Firebase Hosting에서 수동으로 삭제하지 않는 이상 그대로 남아 있을 수 있지만 **최신 변경 사항은 Cloudflare Pages에 배포**합니다.
 
-## 회원 로그인과 비밀번호 변경
+### Git 통합 확인
 
-- 홈페이지는 **학번 10자리 + 비밀번호**로 로그인합니다.
-- 실제 Firebase Auth 이메일은 `학번@members.skku-myrock.firebaseapp.com` 형태의 **수신 불가능한 로그인 전용 식별자**입니다.
-- 로그인 후 **내 정보 → 비밀번호 변경**에서 현재 비밀번호로 재인증 후 새 비밀번호(12자 이상)를 지정합니다.
-- 초기 비밀번호를 잊은 회원의 관리자 초기화 UI는 아직 구현되지 않았습니다. 로그인용 가상 이메일은 비밀번호 재설정 메일을 수신하지 못합니다.
-- 비밀번호 원문은 Firestore에 저장하지 않습니다.
+Cloudflare Pages 프로젝트 → **Deployments**에서 `main` 최신 커밋 배포가 **Success**인지 확인하세요. 설정이 `workers.dev`가 아니라 **Pages 프로젝트**인지도 확인합니다.
 
-## 회장단 회원 관리
+## 2. Firebase 인증 도메인 추가
 
-권한은 기수와 무관하게 **관리자가 수동 설정**합니다.
+Firebase Console → Authentication → Settings → **Authorized domains**에 **실제 발급된** `<your-project>.pages.dev` 도메인을 추가합니다. 주소에 `https://`를 포함하지 않습니다.
 
-- `role`: `member`(일반부원), `part_leader`(파트장), `staff`(실무단), `president`(회장단)
-- `handoverAccess`: 운영 역할과 별개로 인수인계 접근 권한을 표시하는 boolean
-- `generation`: 예를 들어 `27.5`; 어떤 권한도 자동 부여·회수하지 않음
-- `positions`: 표시용 직책 문자열 배열; 권한 판정에 사용하지 않음
+기존 Firebase Auth 계정, 비밀번호, Firestore 문서는 이전하지 않고 그대로 유지합니다. 로그인은 Firebase JS SDK로 처리하므로 기존 `authDomain` 설정을 유지합니다.
 
-로그인한 회장단은 **회원 관리**에서 다음을 할 수 있습니다.
+## 3. Cloudflare 비밀키 연결 (필수)
 
-- 회원 목록 조회/검색(100명씩 불러오기)
-- CSV 파일로 1~60명 등록, 중복 학번 건너뛰기
-- 직접 한 명 등록
-- 기존 회원의 `role`, `handoverAccess`, `positions` 수정
+회장단 API는 Firebase 서비스 계정으로 Google REST API를 호출합니다. **클라이언트 코드나 GitHub에 서비스 계정 키를 절대로 저장하지 마세요.**
 
-신규 회원은 항상 `role: member`, `handoverAccess: false`로 생성됩니다.
-권한 변경은 Firebase Cloud Functions 서버가 사용자 프로필을 다시 확인합니다.
-본인 계정과 기존 최고관리자 계정은 웹에서 권한을 수정하지 못합니다.
-**홈페이지에는 새로운 `superadmin` 권한을 부여하는 기능이 없습니다.** 최초 관리자 설정용 스크립트도 공개 저장소에 포함하지 않습니다. 현재의 기존 최고관리자 계정은 유지합니다.
+1. Firebase 프로젝트 `skku-myrock`에 접근 가능한 서비스 계정을 준비합니다. 최소 권한 관리를 위해 **Firebase Authentication Admin** 및 **Cloud Datastore User** 등 계정 생성·조회·삭제와 Firestore 문서 조회·생성·수정에 필요한 IAM 역할만 부여하는 전용 서비스 계정을 권장합니다.
+2. 서비스 계정 JSON은 자신의 컴퓨터에만 저장합니다. 현재 Firebase Admin SDK에서 사용한 키를 임시로 재사용할 수도 있지만, 장기 운영에는 전용 키를 권장합니다.
+3. Cloudflare → **Workers & Pages → 해당 Pages 프로젝트 → Settings → Variables and Secrets → Add**에서 다음을 생성합니다.
 
-### CSV 형식
+   | 이름 | 설정 | 값 |
+   |---|---|---|
+   | `FIREBASE_SERVICE_ACCOUNT` | **Encrypt/Secret** | 서비스 계정 JSON 전체 내용 |
+   | `FIREBASE_API_KEY` | 일반 환경 변수 (선택) | Firebase 웹 API key. 코드에 기존 공개 Firebase 구성값을 기본으로 사용 |
 
-양식은 회원 관리 화면에서 다운로드할 수 있습니다. UTF-8 CSV를 사용하세요.
+4. **Production** 환경에 설정하고 **새 배포를 실행**해야 Functions 런타임에 반영됩니다. Preview 배포도 테스트하려면 Preview 환경에 별도로 지정해야 할 수 있습니다.
+5. Cloudflare Pages 무료 할당량에 맞춰 각 요청에서는 회원 **최대 5명**씩 처리하며, CSV가 60명인 경우 웹이 자동으로 여러 요청으로 나눠 처리합니다.
+
+서비스 계정 JSON 파일을 ChatGPT 대화, GitHub, 공개 페이지나 Cloudflare 일반 평문 변수에 붙여 넣지 마세요. **Secret**으로만 설정합니다. 계정 소유자 또는 개발 담당자만 이 설정을 관리하고, 일반 운영진에게 키를 넘기지 않습니다.
+
+> **주의:** 비밀키가 없거나 Google Cloud IAM 권한이 부족하면 홈페이지 정적 페이지는 표시되지만 회원 관리 API는 실행되지 않습니다. 이 저장소 변경만으로 사용자의 Cloudflare Secret과 Firebase Authorized domains를 대신 설정할 수 없습니다.
+
+## 4. CSV 회원 등록 절차
+
+로그인한 회장단이 **회원 관리 → 신입부원 등록**에서 다음 3단계를 수행합니다.
+
+1. **CSV 추가:** 양식을 받거나 UTF-8 CSV 파일 선택 (한 번에 최대 60명).
+2. **추가될 명단 확인:** 서버에 쓰기 전 **전체 인원·학번·이름·기수·세션·직책을 표로 확인**. 다른 파일로 바꿀 수 있음.
+3. **등록 실행 → 등록 완료:** 웹이 5명 단위로 처리한 진행 상황을 보여주고, **신규 생성/기존 계정/실패** 인원을 구분. 신규 회원의 초기 비밀번호를 CSV로 다운로드.
+
+양식 예시:
 
 ```csv
 학번,이름,기수,세션,직책
 2026300001,예시회원,29,기타|베이스,
+2026300002,예시회원2,29,드럼,장비관리
 ```
 
-- 필수 열: 학번/이름/기수/세션; 직책은 선택 사항입니다.
-- 영문 헤더 `studentId,name,generation,sessions,positions`도 지원합니다.
-- 여러 세션이나 직책은 `|`로 구분합니다. 쉼표가 들어 있는 셀은 CSV 규칙에 맞게 큰따옴표로 감싸세요.
-- 등록 전에 미리보기로 데이터를 확인할 수 있습니다.
-- **새로 생성된 회원의 초기 비밀번호는 결과 화면에서 한 번만 CSV로 저장**할 수 있습니다. 파일은 민감 정보이므로 GitHub에 업로드하거나 공개 공유하지 말고, 각각의 회원에게 개별로 전달한 뒤 안전하게 삭제하세요.
-- 일부 계정만 생성된 상태에서 요청이 실패할 수 있습니다. 결과를 확인한 뒤 기존 계정 중복 여부를 고려해 재시도하세요. 초기 비밀번호는 다시 표시되지 않습니다.
+영문 헤더 `studentId,name,generation,sessions,positions`도 지원합니다. 세션 복수 입력은 `|`로 구분합니다.
 
-## 기존 일회성 로컬 등록 스크립트
+- **실제 회원 생성은 2단계에서 관리자 확인을 누른 뒤에만 진행됩니다.**
+- 새 계정은 언제나 `role: member`, `handoverAccess: false`. `generation`과 `positions`는 표시용 데이터입니다.
+- 기존 학번이 이미 있으면 계정·프로필·비밀번호·권한을 수정하지 않고 건너뜁니다.
+- 통신 장애 시 결과를 확인할 수 없는 계정이 존재할 수 있으므로 **무작정 같은 명단을 재시도하지 말고 회원 명단과 관리자 로그를 확인**하세요.
+- 신규 계정의 초기 비밀번호는 완료 화면에서 **한 번만** 전달됩니다. 즉시 CSV로 내려받아 운영진만 안전하게 보관하고 개별 전달하세요. Git에 올리지 말고 전달 후 삭제합니다.
+- 계정 생성과 Firestore 프로필 생성은 별도 Google 서비스 작업이므로 일부 실패가 가능하며, 서버는 신규 계정 롤백을 시도합니다.
 
-`scripts/provision-members.mjs`는 데이터 복구 및 개발 초기 설정용으로 유지합니다.
-`private/members.json`만 사용하며, 기본값은 검증 전용입니다.
+## 5. 회원 권한 정책
+
+- `role`: `member`, `part_leader`, `staff`, `president` (기수로 자동 변경되지 않음)
+- `positions`: 표시용 직책 목록
+- `handoverAccess`: 다른 권한과 독립적인 인수인계 접근 여부
+
+Firebase 로그인 토큰 서명·대상 프로젝트·만료 시간 및 Firestore의 현재 회장단 권한을 **Cloudflare 서버에서 검증**합니다.
+
+현재 개발용 최고관리자 계정은 유지되며, **최고관리자를 새로 발급하거나 수정하는 API는 제공하지 않습니다.** 웹에서 자기 자신이나 기존 최고관리자 계정의 권한 변경을 금지합니다.
+
+세션 수정·자기 비밀번호 변경은 기존 Firebase SDK에서 진행합니다. 현재 이메일은 실제 수신함이 아닌 `학번@members.skku-myrock.firebaseapp.com` 주소로, 이메일 재설정은 지원하지 않습니다.
+
+Firestore 보안 규칙 `firestore.rules`는 자기 프로필만 읽고 세션만 직접 수정하도록 제한합니다. 회장단 작업은 보안 규칙을 우회할 수 있는 서비스 계정으로 수행하므로 **Cloudflare Functions 내부에서 관리자 권한을 반드시 확인합니다.**
+
+## 6. 개발 / 로컬 테스트
 
 ```bash
-node scripts/provision-members.mjs private/members.json
-# 관리자 인증이 있는 로컬 환경에서만 실제 생성:
-node scripts/provision-members.mjs private/members.json --apply
+npm install
+npm run build
+npm run check:api
+npm run check:pages
 ```
 
-`GOOGLE_APPLICATION_CREDENTIALS`를 사용하는 경우 서비스 계정 JSON은 프로젝트 바깥의 안전한 위치에 보관하세요.
-`private/`, `*service-account*.json`, `*credentials*.csv`는 Git에서 제외되어 있습니다.
+`npm run dev`는 React 프런트엔드만 실행합니다. Pages Functions까지 시험하려면 `npm run build` 다음 `npx wrangler pages dev dist`를 사용하세요. 인증 Secret을 테스트 환경에 등록해야 실제 관리자 호출이 동작합니다.
 
-기존 등록 스크립트 또한 역할과 비밀번호를 임의 변경하지 않습니다. **직접 학번을 바꾸는 것**은 아직 지원되지 않으며, 학번 변경 시 Firebase Auth의 내부 이메일과 Firestore `studentId`를 같은 UID에 대해 함께 변경해야 합니다.
+`.gitignore`는 `private/`, `.dev.vars`, `.wrangler/` 등을 제외합니다. 전용 IAM 서비스 계정 키를 공개 저장소에 올리면 안 됩니다.
 
-## 아직 구현되지 않은 범위
+## 후속 작업
 
-회원 비밀번호 관리자 초기화, 회원 학번 수정, 인수인계 문서 CRUD, 공지·포토존 작성, 합주 시간표, 장비대여, 회계 등은 후속 작업입니다.
-인수인계 메뉴는 `handoverAccess` 또는 운영 역할로 표시되지만 실제 자료 기능은 미리보기입니다.
-운영 기능을 추가할 때도 각 API에 **서버 측 권한 검증**을 적용해야 합니다.
+공지/인수인계 자료, When2meet, 장비 대여/승인, 회계 및 관리자 비밀번호 초기화는 아직 미리보기 또는 후속 작업입니다. 인수인계 메뉴는 접근 여부만 반영하고 문서 CRUD는 별도 구현해야 합니다.
