@@ -31,6 +31,16 @@ Cloudflare Dashboard → **Workers & Pages → Pages → Connect to Git**에서 
 
 Cloudflare Pages 프로젝트 → **Deployments**에서 `main` 최신 커밋 배포가 **Success**인지 확인하세요. 설정이 `workers.dev`가 아니라 **Pages 프로젝트**인지도 확인합니다.
 
+### 배포 확인용 주소
+
+Pages에서 실제 할당한 주소를 사용해 `https://<프로젝트>.pages.dev/api/health`에 접속합니다. 다음과 같은 JSON이 표시되면 Pages Functions가 배포된 것입니다.
+
+```json
+{"service":"myrock-pages-api","deployed":true,"firebaseSecretConfigured":false}
+```
+
+`firebaseSecretConfigured: false`는 관리자 서비스 계정 Secret이 없다는 뜻입니다. 대시보드에 `FIREBASE_SERVICE_ACCOUNT`을 저장하고 **재배포하면 true**가 되어야 합니다. 이 점검은 Secret 존재만 검사하며 실제 Firebase API 호출 성공까지 보장하지 않습니다. HTML 홈페이지가 나타나거나 404가 나오면 Pages Functions가 아직 배포되지 않았거나 빌드 설정을 확인해야 합니다.
+
 ## 2. Firebase 인증 도메인 추가
 
 Firebase Console → Authentication → Settings → **Authorized domains**에 **실제 발급된** `<your-project>.pages.dev` 도메인을 추가합니다. 주소에 `https://`를 포함하지 않습니다.
