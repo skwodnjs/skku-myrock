@@ -5,7 +5,7 @@
 - 회원용 홈페이지: Cloudflare Pages 프로젝트의 `*.pages.dev` 주소
 - 인증: 기존 Firebase Authentication 유지 (학번 + 비밀번호)
 - 데이터: 기존 Firestore 유지
-- 회장단 API: Cloudflare Pages Functions `/api/members/*` (기존 Firebase Cloud Functions는 사용하지 않음)
+- 역할별 부원 관리 API: Cloudflare Pages Functions `/api/members/*` (기존 Firebase Cloud Functions는 사용하지 않음)
 
 ## 1. Cloudflare Pages 최초 연결
 
@@ -21,7 +21,7 @@ Cloudflare Dashboard → **Workers & Pages → Pages → Connect to Git**에서 
 | Build output directory | `dist` |
 | Node.js | 22 이상 |
 
-이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/preview`, `/api/members/register`, `/api/members/permissions` API를 자동으로 배포합니다.
+이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/sessions`, `/api/members/details`, `/api/members/preview`, `/api/members/register`, `/api/members/permissions`, `/api/members/reset-password`, `/api/members/delete` API를 배포합니다.
 
 `public/_routes.json`은 Vite가 `dist/_routes.json`으로 복사합니다. **`/api/*`만 Pages Functions 요청으로 집계**하고 HTML/CSS/JS/정적 이미지 요청은 Pages 정적 자산으로 제공하도록 지정합니다.
 
@@ -49,7 +49,7 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 
 ## 3. Cloudflare 비밀키 연결 (필수)
 
-회장단 API는 Firebase 서비스 계정으로 Google REST API를 호출합니다. **클라이언트 코드나 GitHub에 서비스 계정 키를 절대로 저장하지 마세요.**
+운영진 API는 Firebase 서비스 계정으로 Google REST API를 호출합니다. 학번 변경은 Auth 이메일도 업데이트해야 하고 회장단의 비밀번호 초기화·회원 삭제에는 Firebase Authentication Admin의 사용자 업데이트·삭제 IAM 권한이 필요합니다. **클라이언트 코드나 GitHub에 서비스 계정 키를 절대로 저장하지 마세요.**
 
 1. Firebase 프로젝트 `skku-myrock`에 접근 가능한 서비스 계정을 준비합니다. 최소 권한 관리를 위해 **Firebase Authentication Admin** 및 **Cloud Datastore User** 등 계정 생성·조회·삭제와 Firestore 문서 조회·생성·수정에 필요한 IAM 역할만 부여하는 전용 서비스 계정을 권장합니다.
 2. 서비스 계정 JSON은 자신의 컴퓨터에만 저장합니다. 현재 Firebase Admin SDK에서 사용한 키를 임시로 재사용할 수도 있지만, 장기 운영에는 전용 키를 권장합니다.
@@ -67,9 +67,9 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 
 > **주의:** 비밀키가 없거나 Google Cloud IAM 권한이 부족하면 홈페이지 정적 페이지는 표시되지만 회원 관리 API는 실행되지 않습니다. 이 저장소 변경만으로 사용자의 Cloudflare Secret과 Firebase Authorized domains를 대신 설정할 수 없습니다.
 
-## 4. CSV 회원 등록 절차
+## 4. CSV 부원 등록 절차
 
-로그인한 회장단이 **회원 관리 → 신입부원 등록**에서 다음 3단계를 수행합니다.
+로그인한 회장단이 **부원 관리 → 신입부원 등록**에서 다음 3단계를 수행합니다.
 
 1. **CSV 추가:** 양식을 받거나 UTF-8 CSV 파일 선택 (한 번에 최대 60명).
 2. **추가될 명단 확인:** 실제 생성에 앞서 Firebase에서 기존 학번 존재 여부를 조회하고 **신규 등록 예상 인원·기존 계정 수·학번·이름·기수·세션·직책 전체를 표로 확인**. 이 단계에서는 어떠한 회원도 생성하지 않음. 다른 파일로 바꿀 수 있음.
@@ -92,9 +92,32 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 - **신규 생성 계정**은 초기 비밀번호가 **본인 학번(10자리)**입니다. 초기 비밀번호 CSV 파일을 따로 내려받을 필요는 없습니다. 기존 계정의 비밀번호는 변경하지 않습니다. 로그인 문제가 생기면 운영진에게 연락하도록 안내합니다. 비밀번호는 로그인 후 **내 정보 → 비밀번호 변경**에서 본인이 변경할 수 있습니다.
 - 계정 생성과 Firestore 프로필 생성은 별도 Google 서비스 작업이므로 일부 실패가 가능하며, 서버는 신규 계정 롤백을 시도합니다.
 
-회원 관리에는 **회원 명단 / 신입부원 등록** 두 탭만 표시됩니다. **회원 명단 → 권한 수정**을 누르면 해당 회원 행 아래에서 역할·직책·인수인계 접근을 수정할 수 있습니다. 별도의 권한 관리 탭은 없습니다.
+부원 관리에서 **파트장·실무단에게는 부원 명단 탭만**, **회장단에게는 부원 명단 및 신입부원 등록 탭**을 표시합니다. 모든 명단은 누락 없이 페이지를 조회한 뒤 한국어 이름 가나다순으로 정렬합니다. 수정 기능은 부원 행 아래에 바로 표시되며 별도 권한 관리 탭은 없습니다.
 
-## 5. 회원 권한 정책
+## 5. 부원 관리 권한
+
+서버는 Firebase ID 토큰 및 Firestore 프로필을 **요청마다 다시 검증**합니다. 화면에서 버튼을 숨기는 것 외에도 서버 API에서 역할별로 거절합니다.
+
+| 기능 | 파트장 | 실무단 | 회장단 |
+|---|---|---|---|
+| 부원 명단 전체 조회 (가나다순) | 가능 | 가능 | 가능 |
+| 타 부원 세션 수정 | 가능 | 가능 | 가능 |
+| 이름/학번/기수/직책 수정 | 불가 | 가능 | 가능 |
+| CSV·개별 부원 추가 | 불가 | 불가 | 가능 |
+| 권한 / 인수인계 지정 | 불가 | 불가 | 가능 |
+| 비밀번호 초기화 (현재 학번 10자리) | 불가 | 불가 | 가능 |
+| 부원 삭제 (Auth 계정 + Firestore 프로필) | 불가 | 불가 | 가능 |
+
+**OB 운영진**은 `handoverAccess: true`이면서 `role: member`이면 내 정보의 권한에 OB 운영진으로 표시하지만, **부원 명단 조회 및 수정 권한은 부여하지 않습니다.** 현재 최고관리자만 기존 custom claim과 Firestore flag를 함께 검사해 회장단 수준으로 관리할 수 있습니다.
+
+**내 정보 → 권한**은 `회장단`, `실무단`, `파트장`, `OB 운영진`, `일반부원` 중 한 가지로 표시합니다. 직책은 별도 필드로 표시합니다.
+
+학번을 수정하면 `학번@members.skku-myrock.firebaseapp.com`로 되어 있는 Firebase Auth 로그인용 이메일까지 변경하고, Firestore 저장에 실패하면 Auth 값을 되돌리도록 시도합니다. 학번 변경 시 **비밀번호는 자동 초기화되지 않습니다.**
+
+회장단이 비밀번호를 초기화하면 해당 부원의 비밀번호가 **현재 학번 10자리**로 바뀝니다. 계정 삭제는 학번 재입력 확인을 요구하며 시스템 관리자와 본인 계정은 삭제할 수 없습니다. 삭제 작업은 Auth와 Firestore가 서로 다른 서비스이므로 오류 발생 시 복구 확인이 필요할 수 있습니다. **하위 컬렉션/다른 게시물 데이터까지 자동 정리하는 기능은 포함하지 않습니다.**
+
+비밀번호 변경 화면에서는 사이트 자체의 최소 길이·조합 제한을 두지 않습니다. 단, **Firebase Auth 서버 자체의 최소 6자 제한**은 유지됩니다.
+
 
 - `role`: `member`, `part_leader`, `staff`, `president` (기수로 자동 변경되지 않음)
 - `positions`: 표시용 직책 목록
@@ -106,7 +129,7 @@ Firebase 로그인 토큰 서명·대상 프로젝트·만료 시간 및 Firesto
 
 세션 수정·자기 비밀번호 변경은 기존 Firebase SDK에서 진행합니다. 신규 회원에게 학번과 동일한 초기 비밀번호를 지정하는 방식은 추측 가능하므로, 계정에 문제가 있다면 운영진에게 문의하고 필요한 경우 본인이 변경하는 것을 권장합니다. 자동 최초 로그인 변경은 강제하지 않습니다. 현재 이메일은 실제 수신함이 아닌 `학번@members.skku-myrock.firebaseapp.com` 주소로, 이메일 재설정은 지원하지 않습니다.
 
-Firestore 보안 규칙 `firestore.rules`는 자기 프로필만 읽고 세션만 직접 수정하도록 제한합니다. 회장단 작업은 보안 규칙을 우회할 수 있는 서비스 계정으로 수행하므로 **Cloudflare Functions 내부에서 관리자 권한을 반드시 확인합니다.**
+Firestore 보안 규칙 `firestore.rules`는 자기 프로필만 읽고 세션만 직접 수정하도록 제한합니다. 운영진 작업은 보안 규칙을 우회할 수 있는 서비스 계정으로 수행하므로 **Cloudflare Functions 내부에서 관리자 권한을 반드시 확인합니다.**
 
 ## 6. 개발 / 로컬 테스트
 
