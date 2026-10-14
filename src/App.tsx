@@ -1,30 +1,31 @@
 import { useEffect, useState } from 'react';
+import type { User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { auth, db, accountEmail } from './firebase';
+import type { MemberProfile, Session } from './firebase';
 import type { FormEvent, ReactNode } from 'react';
 import {
   ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronDown,
   CircleHelp, ClipboardList, ExternalLink, FileText, Instagram,
-  LockKeyhole, Mail, Menu, Plus, Search, ShieldCheck, Users, X,
+  LockKeyhole, Mail, Menu, Plus, Search, ShieldCheck, Users, X, UserRound, LogOut,
 } from 'lucide-react';
 import logo from './logo-transparent.png';
 
-type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members';
+type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
 
-const primaryNav: NavItem[] = [
-  { id: 'about', label: '동아리 소개' },
-  { id: 'news', label: '공지사항' },
-  { id: 'schedule', label: '합주 시간 조율' },
-  { id: 'gallery', label: '포토존' },
-  { id: 'equipment', label: '장비 대여' },
+const navGroups: { label: string; items: NavItem[] }[] = [
+  { label: '소개', items: [{id:'about',label:'동아리 소개'},{id:'gallery',label:'포토존'}] },
+  { label: '소식', items: [{id:'news',label:'공지사항'},{id:'finance',label:'후원 · 회계'}] },
+  { label: '활동', items: [{id:'schedule',label:'합주 시간 조율'},{id:'equipment',label:'장비 대여'}] },
 ];
-const secondaryNav: NavItem[] = [
-  { id: 'finance', label: '후원 · 회계' },
-  { id: 'handover', label: '인수인계' },
-  { id: 'members', label: '회원 관리' },
-];
-const allNav = [...primaryNav, ...secondaryNav];
+const publicNav = navGroups.flatMap(group => group.items);
+const adminNav: NavItem[] = [{id:'members',label:'회원 관리'},{id:'handover',label:'인수인계'}];
+const allNav: NavItem[] = [...publicNav,...adminNav,{id:'profile',label:'내 정보'}];
+const isAdmin = (profile: MemberProfile | null) => Boolean(profile && profile.role !== 'member');
 const pathFor = (page: Page) => page === 'home' ? '/' : `/${page}`;
 const pathToPage = (): Page => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -63,7 +64,7 @@ function Home({ navigate, notify }: { navigate: Navigate; notify: Notify }) {
       <div className="hero-copy">
         <span className="eyebrow">SUNGKYUNKWAN UNIVERSITY BAND CLUB</span>
         <h1>여기로,<br /><span>모여락!</span></h1>
-        <p>성균관대학교 밴드 동아리 모여락입니다.<br />우리의 음악과 이야기를 이곳에 담습니다.</p>
+        <p>성균관대학교 중앙 밴드 동아리 모여락입니다.<br />우리의 음악과 이야기를 이곳에 담습니다.</p>
         <TextLink onClick={() => navigate('about')}>동아리 소개</TextLink>
       </div>
       <div className="hero-media"><Placeholder label="대표 공연 사진" /></div>
@@ -161,24 +162,130 @@ function Members({ openLogin, notify }: { openLogin: () => void; notify: Notify 
 }
 
 function LoginDialog({ close, notify }: { close: () => void; notify: Notify }) {
+  const [studentId, setStudentId] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if(e.key === 'Escape') close(); }; window.addEventListener('keydown',onKey); return ()=>window.removeEventListener('keydown',onKey); },[close]);
-  return <div className="modal-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)close();}}><div className="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-heading"><button type="button" className="dialog-close" onClick={close} aria-label="닫기"><X size={20}/></button><div className="dialog-brand"><img src={logo} alt="" /> <span>모여락</span></div><h2 id="login-heading">회원 로그인</h2><p>학번과 비밀번호로 로그인하는 화면입니다.<br/>로그인 기능은 추후 연결할 예정입니다.</p><form onSubmit={e=>{e.preventDefault();notify('아직 로그인 기능이 연결되지 않았습니다.');close();}}><label>학번<input type="text" inputMode="numeric" autoComplete="username" placeholder="학번을 입력하세요" required /></label><label>비밀번호<input type="password" autoComplete="current-password" placeholder="비밀번호를 입력하세요" required /></label><button type="submit" className="button button-primary">로그인 <ArrowRight size={17}/></button></form><p className="login-note"><CircleHelp size={15}/> 비밀번호 문의는 운영진에게 연락해 주세요.</p></div></div>;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    if (!/^\d{10}$/.test(studentId.trim())) {setError('학번 10자리를 입력해 주세요.');return;}
+    setBusy(true);
+    try {
+      await signInWithEmailAndPassword(auth, accountEmail(studentId.trim()), password);
+      close();
+      notify('로그인되었습니다. 내 정보에서 세션을 확인할 수 있습니다.');
+    } catch (err) {
+      const code = (err as {code?:string}).code;
+      if (code === 'auth/too-many-requests') setError('로그인 시도가 많습니다. 잠시 후 다시 시도해 주세요.');
+      else if (code === 'auth/network-request-failed') setError('네트워크 연결을 확인해 주세요.');
+      else if (code === 'auth/operation-not-allowed') setError('Firebase 콘솔에서 이메일/비밀번호 로그인을 활성화해야 합니다.');
+      else setError('학번 또는 비밀번호가 올바르지 않거나 등록되지 않은 계정입니다.');
+    } finally {setBusy(false);}
+  }
+  return <div className="modal-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)close();}}>
+    <div className="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-heading">
+      <button type="button" className="dialog-close" onClick={close} aria-label="닫기"><X size={20}/></button>
+      <div className="dialog-brand"><img src={logo} alt="" /> <span>모여락</span></div>
+      <h2 id="login-heading">회원 로그인</h2>
+      <p>등록된 학번과 개인별 비밀번호로 로그인합니다.</p>
+      <form onSubmit={submit}>
+        <label>학번<input type="text" inputMode="numeric" maxLength={10} autoComplete="username" placeholder="학번 10자리" value={studentId} onChange={event=>setStudentId(event.target.value.replace(/\D/g,''))} required /></label>
+        <label>비밀번호<input type="password" autoComplete="current-password" placeholder="비밀번호" value={password} onChange={event=>setPassword(event.target.value)} required /></label>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button type="submit" className="button button-primary" disabled={busy}>{busy?'로그인 중...':'로그인'} <ArrowRight size={17}/></button>
+      </form>
+      <p className="login-note"><CircleHelp size={15}/> 계정 발급·비밀번호 변경은 운영진에게 문의해 주세요.</p>
+    </div>
+  </div>;
+}
+
+function Profile({ user, profile, pending, error, notify, onSaved }: {user: User | null; profile: MemberProfile | null; pending: boolean; error: string; notify: Notify; onSaved: (sessions: Session[]) => void}) {
+  const [selected, setSelected] = useState<Session[]>([]);
+  const [saving, setSaving] = useState(false);
+  useEffect(()=>{setSelected(profile?.sessions ?? []);},[profile?.uid,profile?.sessions?.join('|')]);
+  if (pending) return <><PageHeading tag="MY PROFILE" title="내 정보" description="회원 정보를 불러오는 중입니다."/><section className="container section-block"><EmptyState title="잠시만 기다려 주세요" description="로그인 상태와 회원 정보를 확인하고 있습니다." /></section></>;
+  if (!user) return <><PageHeading tag="MY PROFILE" title="내 정보" description="로그인이 필요한 페이지입니다."/><section className="container section-block"><EmptyState title="로그인이 필요합니다" description="상단의 로그인 버튼에서 학번과 비밀번호를 입력해 주세요." /></section></>;
+  if (!profile) return <><PageHeading tag="MY PROFILE" title="내 정보" description="회원 프로필을 찾지 못했습니다."/><section className="container section-block"><EmptyState title="회원 정보를 불러올 수 없습니다" description={error || 'Firebase 계정과 회원 프로필이 연결되어 있는지 확인해 주세요.'} /></section></>;
+  const toggle = (item: Session) => setSelected(prev=>prev.includes(item)?prev.filter(x=>x!==item):[...prev,item]);
+  async function save() {
+    if (!profile || !user) return;
+    if (selected.length === 0) {notify('세션을 적어도 하나 선택해 주세요.');return;}
+    setSaving(true);
+    try {
+      await updateDoc(doc(db,'users',user.uid),{sessions:selected,updatedAt:serverTimestamp()});
+      onSaved(selected);
+      notify('세션 정보가 저장되었습니다.');
+    } catch (err) {
+      console.error('프로필 변경 오류',err);
+      notify('저장하지 못했습니다. Firestore 보안 규칙과 네트워크를 확인해 주세요.');
+    } finally {setSaving(false);}
+  }
+  return <><PageHeading tag="MY PROFILE" title="내 정보" description="등록된 회원 정보를 확인하고, 본인의 세션을 수정할 수 있습니다."/>
+    <section className="container section-block profile-layout">
+      <div className="profile-panel"><div className="profile-title"><UserRound size={20}/><h2>회원 정보</h2></div>
+        <dl className="profile-data"><div><dt>이름</dt><dd>{profile.name}</dd></div><div><dt>학번</dt><dd>{profile.studentId}</dd></div><div><dt>기수</dt><dd>{profile.generation}기</dd></div><div><dt>직책</dt><dd>{profile.positions.length?profile.positions.join(', '):'일반부원'}</dd></div></dl>
+      </div>
+      <div className="profile-panel"><div className="profile-title"><Users size={20}/><h2>나의 세션</h2></div>
+        <p className="profile-help">참여하는 세션을 모두 선택할 수 있습니다. 이 정보만 본인이 직접 수정할 수 있습니다.</p>
+        <div className="session-options">{sessions.map(item=><label className={selected.includes(item as Session)?'chosen':''} key={item}><input type="checkbox" checked={selected.includes(item as Session)} onChange={()=>toggle(item as Session)}/><span>{item}</span><Check size={17}/></label>)}</div>
+        <button className="button button-primary profile-save" type="button" onClick={save} disabled={saving||selected.length===0||selected.join('|')===profile.sessions.join('|')}>{saving?'저장 중...':'세션 저장'} <ArrowRight size={15}/></button>
+      </div>
+    </section>
+  </>;
 }
 
 function App() {
   const [page,setPage] = useState<Page>(pathToPage);
   const [menuOpen,setMenuOpen] = useState(false);
-  const [moreOpen,setMoreOpen] = useState(false);
+  const [openGroup,setOpenGroup] = useState<string | null>(null);
+  const [accountOpen,setAccountOpen] = useState(false);
   const [loginOpen,setLoginOpen] = useState(false);
   const [toast,setToast] = useState('');
+  const [user,setUser] = useState<User | null>(null);
+  const [profile,setProfile] = useState<MemberProfile | null>(null);
+  const [authPending,setAuthPending] = useState(true);
+  const [profileError,setProfileError] = useState('');
+  useEffect(()=>{
+    let live = true;
+    const unsub = onAuthStateChanged(auth,async current=>{
+      if(!live)return;
+      setUser(current);setProfile(null);setProfileError('');setAuthPending(true);
+      if(current){
+        try {
+          const snapshot = await getDoc(doc(db,'users',current.uid));
+          if(!live)return;
+          if(!snapshot.exists()) setProfileError('등록된 프로필이 없습니다. 관리자에게 문의해 주세요.');
+          else {
+            const data = snapshot.data();
+            setProfile({uid:current.uid,studentId:String(data.studentId??''),name:String(data.name??''),generation:String(data.generation??''),sessions:Array.isArray(data.sessions)?data.sessions:[],positions:Array.isArray(data.positions)?data.positions:[],role:data.role==='part_leader'||data.role==='staff'||data.role==='president'?data.role:'member'});
+          }
+        } catch(err){console.error(err);if(live)setProfileError('프로필 조회 권한 또는 연결을 확인해 주세요.');}
+      }
+      if(live)setAuthPending(false);
+    });
+    return()=>{live=false;unsub();};
+  },[]);
   useEffect(()=>{const onPop=()=>setPage(pathToPage());window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
   useEffect(()=>{document.title=`${page==='home'?'모여락':allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
-  const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setMoreOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
+  useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
+  const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
-  const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);};
+  const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
+  const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
+  const admin=isAdmin(profile);
   return <div className="site-root">
-    <header className="site-header"><div className="container header-inner"><button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button><nav className="desktop-nav" aria-label="주 메뉴">{primaryNav.map(item=><button type="button" key={item.id} className={page===item.id?'active':''} onClick={()=>navigate(item.id)}>{item.label}</button>)}<div className="more-wrapper"><button type="button" className={secondaryNav.some(n=>n.id===page)?'active':''} aria-expanded={moreOpen} onClick={()=>setMoreOpen(!moreOpen)}>더보기 <ChevronDown size={14}/></button>{moreOpen&&<div className="more-menu">{secondaryNav.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div></nav><div className="header-actions"><button type="button" className="login-button" onClick={showLogin}>로그인</button><button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button></div></div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{allNav.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}<ArrowRight size={16}/></button>)}<button type="button" onClick={showLogin}>로그인<ArrowRight size={16}/></button></div></nav>}</header>
+    <header className="site-header"><div className="container header-inner">
+      <button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button>
+      <nav className="desktop-nav" aria-label="주 메뉴">{navGroups.map(group=><div className="more-wrapper nav-group" key={group.label} onMouseEnter={()=>setOpenGroup(group.label)} onMouseLeave={()=>setOpenGroup(null)}><button type="button" aria-expanded={openGroup===group.label} className={group.items.some(i=>i.id===page)?'active':''} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}>{group.label} <ChevronDown size={13}/></button>{openGroup===group.label&&<div className="more-menu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}</nav>
+      <div className="header-actions">
+        {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"><button className="login-button account-toggle" type="button" onClick={()=>setAccountOpen(!accountOpen)} aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{admin&&<><button type="button" onClick={()=>navigate('members')}>회원 관리</button><button type="button" onClick={()=>navigate('handover')}>인수인계</button></>}<button type="button" onClick={logout}>로그아웃</button></div>}</div>}
+        <button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
+      </div>
+    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{admin&&adminNav.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}<ArrowRight size={16}/></button>)}<button type="button" onClick={logout}>로그아웃<LogOut size={16}/></button></>}</div></nav>}
+    </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} notify={notify}/>}
       {page==='about'&&<About navigate={navigate} notify={notify}/>}
@@ -187,10 +294,10 @@ function App() {
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<Finance notify={notify}/>}
-      {page==='handover'&&<Handover openLogin={showLogin} notify={notify}/>}
-      {page==='members'&&<Members openLogin={showLogin} notify={notify}/>}
+      {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
+      {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:admin?(page==='handover'?<Handover openLogin={showLogin} notify={notify}/>:<Members openLogin={showLogin} notify={notify}/>):<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="운영진 전용 페이지입니다" description="운영진 권한으로 로그인해야 접근할 수 있습니다." /></section>)}
     </main>
-    <footer className="site-footer"><div className="container footer-main"><div className="footer-brand"><span>모여락 <small>MYROCK</small></span><p>여기로, 모여락!</p></div><div className="footer-nav"><div><strong>동아리</strong>{primaryNav.slice(0,4).map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div><div><strong>회원 서비스</strong>{[primaryNav[4],...secondaryNav].map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div><div><strong>연락</strong><span><Mail size={14}/> 운영진 연락처 등록 예정</span><span>사이트 관리자 연락처 등록 예정</span></div></div></div><div className="container footer-bottom"><span>© MYROCK · 성균관대학교 밴드 동아리</span><span>UI PREVIEW — 기능 준비 중</span></div></footer>
+    <footer className="site-footer"><div className="container footer-main"><div className="footer-brand"><span>모여락 <small>MYROCK</small></span><p>여기로, 모여락!</p></div><div className="footer-nav">{navGroups.map(group=><div key={group.label}><strong>{group.label}</strong>{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>)}<div><strong>연락</strong><span><Mail size={14}/> 운영진 연락처 등록 예정</span></div></div></div><div className="container footer-bottom"><span>© MYROCK · 성균관대학교 중앙 밴드동아리</span><span>기능 개발 중</span></div></footer>
     {loginOpen&&<LoginDialog close={()=>setLoginOpen(false)} notify={notify}/>}
     {toast&&<div className="toast" role="status"><CircleHelp size={17}/><span>{toast}</span><button type="button" aria-label="알림 닫기" onClick={()=>setToast('')}><X size={15}/></button></div>}
   </div>;

@@ -6,3 +6,7 @@ dist/
 .firebase/
 .DS_Store
 *.local
+
+private/
+*service-account*.json
+*credentials*.csv
