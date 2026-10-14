@@ -34,7 +34,6 @@ export function FinanceLanding({ onDonations, onExpenses }: { onDonations: Nav; 
       <div className="finance-bank-card">
         <div className="finance-bank-card-header">
           <span className="finance-bank-eyebrow">DONATION ACCOUNT</span>
-          <span className="finance-bank-pending">계좌 정보 등록 예정</span>
         </div>
         <div className="finance-bank-fields">
           <div><span>은행</span><strong>등록 예정</strong></div>
