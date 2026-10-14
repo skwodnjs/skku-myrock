@@ -1,10 +1,10 @@
 import { FIRESTORE_ROOT, success, failure, reject, memberView, secureOrigin } from '../../_lib/shared.js';
-import { assertAdmin, googleRequest } from '../../_lib/google.js';
+import { assertAccess, googleRequest } from '../../_lib/google.js';
 
 export async function onRequestGet({ request, env }) {
   try {
     secureOrigin(request);
-    await assertAdmin(request, env);
+    await assertAccess(request, env, 'part_leader');
     const url = new URL(request.url);
     const cursor = url.searchParams.get('cursor');
     if (cursor && (cursor.length > 2000 || /[^\w\-+/=]/.test(cursor))) reject('페이지 조회 기준이 올바르지 않습니다.');
