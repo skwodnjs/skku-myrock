@@ -104,3 +104,12 @@
 .member-progress{margin:12px 0!important;color:#0e7667;font-size:12px;font-weight:700}
 .member-preview .member-preview-scroll{max-height:440px}
 @media(max-width:620px){.member-steps{gap:4px}.member-steps span{font-size:10px;padding:11px 2px}.member-preview .member-upload-actions{flex-direction:column;align-items:stretch}.member-preview .member-upload-actions>*{justify-content:center}}
+
+
+/* Member list: edit roles directly below the selected member without a separate tab. */
+.member-inline-edit{margin:0 13px 18px;background:#f8fbfa;border:1px solid #c9ded7;padding:24px}
+.member-edit-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.member-progress-area{margin:14px 0}
+.member-progress-area .member-progress{margin:0 0 8px!important}
+.member-progress-bar{display:block;width:100%;height:13px;accent-color:var(--accent-dark)}
+@media(max-width:620px){.member-inline-edit{margin:0 0 14px;padding:18px}.member-edit-actions{flex-direction:column;align-items:stretch}.member-edit-actions button{width:100%;justify-content:center}}
