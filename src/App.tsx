@@ -104,7 +104,7 @@ const currentOfficers = [
   { name: '배은성', positions: '공연부장, 기타파트장' },
   { name: '허지원', positions: '총무' },
   { name: '정해준', positions: '홍보부장' },
-  { name: '김하은', positions: '베이트파트장' },
+  { name: '김하은', positions: '베이스파트장' },
   { name: '추서현', positions: '드럼파트장' },
   { name: '김민현', positions: '키보드파트장' },
 ] as const;
@@ -112,11 +112,11 @@ const currentOfficers = [
 function About({ navigate }: { navigate: Navigate }) {
   return <><PageHeading tag="ABOUT MYROCK" title="모여락 소개" description="함께 음악을 만들고 무대에 서는 사람들, 모여락을 소개합니다." />
     <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div><Placeholder label="동아리 대표 사진" /></section>
-    <section className="container section-block" aria-label="현재 운영진 8명">
-      <SectionHeading title="운영진" aside="현재 운영진 8명" />
+    <section className="container section-block" aria-label="28기 운영진 소개">
+      <SectionHeading title="운영진" aside="28기 운영진 소개" />
       <div className="leadership-grid">
         {currentOfficers.map(officer => <article className="leader-item" key={officer.name}>
-          <Placeholder label={`${officer.name} 증명사진`} className="leader-photo" />
+          <Placeholder label="사진" className="leader-photo" />
           <div className="leader-description">
             <h3>{officer.name}</h3>
             <p>{officer.positions}</p>
