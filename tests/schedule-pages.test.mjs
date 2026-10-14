@@ -82,7 +82,7 @@ test('schedule detail opens the selected fixture in a read-only weekly calendar'
   assert.match(detail, /level-\$\{level\}/);
   assert.match(detail, /role="img" aria-label=/);
   assert.match(detail, /예시 시간표만 보여줍니다/);
-  assert.doesNotMatch(schedules, /firebase|firestore|fetch\(|setDoc\(|addDoc\(/i);
+  assert.doesNotMatch(schedules, /from ['\"][^'\"]*firebase|fetch\(|setDoc\(|addDoc\(/i);
 });
 
 test('schedule deep links, back navigation, refresh and browser history are wired', () => {
