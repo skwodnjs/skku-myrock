@@ -124,7 +124,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
       if (editMode === 'sessions') await saveMemberSessions(updated, updated.sessions);
       else if (editMode === 'details') await saveMemberDetails(updated);
       else if (isPresident) await saveMemberPermissions(updated);
-      setMessage(`\${editing.name} 부원의 정보를 저장했습니다.`);
+      setMessage(`${editing.name} 부원의 정보를 저장했습니다.`);
       setEditing(null);
       await refresh();
     } catch (err) { setError(callError(err)); }
@@ -133,24 +133,24 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
 
   async function resetPassword(member: MemberRecord) {
     if (!isPresident || busy || member.protected || member.uid === currentUid) return;
-    if (!window.confirm(`\${member.name} 부원의 비밀번호를 현재 학번(\${member.studentId})으로 초기화할까요? 기존 비밀번호는 사용할 수 없게 됩니다.`)) return;
+    if (!window.confirm(`${member.name} 부원의 비밀번호를 현재 학번(${member.studentId})으로 초기화할까요? 기존 비밀번호는 사용할 수 없게 됩니다.`)) return;
     setBusy(true); setError(''); setMessage('');
     try {
       await resetMemberPassword(member);
-      setMessage(`\${member.name} 부원의 비밀번호를 현재 학번 10자리로 초기화했습니다.`);
+      setMessage(`${member.name} 부원의 비밀번호를 현재 학번 10자리로 초기화했습니다.`);
     } catch (err) { setError(callError(err)); }
     finally { setBusy(false); }
   }
 
   async function removeMember(member: MemberRecord) {
     if (!isPresident || busy || member.protected || member.uid === currentUid) return;
-    const typed = window.prompt(`\${member.name} (\${member.studentId}) 부원을 완전히 삭제하려면 학번 10자리를 입력해 주세요.\\nFirebase 로그인 계정과 부원 프로필이 삭제됩니다.`);
+    const typed = window.prompt(`${member.name} (${member.studentId}) 부원을 완전히 삭제하려면 학번 10자리를 입력해 주세요.\\nFirebase 로그인 계정과 부원 프로필이 삭제됩니다.`);
     if (typed !== member.studentId) return;
     setBusy(true); setError(''); setMessage('');
     try {
       await deleteMember(member);
       setEditing(null);
-      setMessage(`\${member.name} 부원의 계정과 프로필을 삭제했습니다.`);
+      setMessage(`${member.name} 부원의 계정과 프로필을 삭제했습니다.`);
       await refresh();
     } catch (err) { setError(callError(err)); }
     finally { setBusy(false); }
