@@ -7,7 +7,7 @@ export async function onRequestGet({ request, env }) {
     await assertAccess(request, env, 'part_leader');
     const url = new URL(request.url);
     const cursor = url.searchParams.get('cursor');
-    if (cursor && (cursor.length > 2000 || /[^\w\-+/=]/.test(cursor))) reject('페이지 조회 기준이 올바르지 않습니다.');
+    if (cursor && (cursor.length > 4000 || /[\u0000-\u001F\u007F]/.test(cursor))) reject('페이지 조회 기준이 올바르지 않습니다.');
     const target = new URL(FIRESTORE_ROOT + '/users');
     target.searchParams.set('pageSize', '100');
     if (cursor) target.searchParams.set('pageToken', cursor);
