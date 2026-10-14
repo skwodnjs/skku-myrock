@@ -4,7 +4,7 @@ import { ArrowRight, Check, Download, FileSpreadsheet, Plus, RefreshCw, Search, 
 import type { MemberRole, Session } from './firebase';
 import {
   callError, downloadCredentials, downloadExampleCsv, loadMembers,
-  parseMembersCsv, previewMembers, registerMembers, saveMemberPermissions,
+  formatMemberValues, parseMembersCsv, previewMembers, registerMembers, saveMemberPermissions, splitMemberValues,
 } from './memberAdmin';
 import type { ImportResult, MemberRecord, NewMember } from './memberAdmin';
 
@@ -119,7 +119,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   function startEdit(member: MemberRecord) {
     setSelectedUid(member.uid);
     setEditing({ ...member });
-    setPositionText(member.positions.join(' | '));
+    setPositionText(formatMemberValues(member.positions));
     setError(''); setMessage('');
     setTab('roles');
   }
@@ -131,7 +131,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
     try {
       const updated = {
         ...editing,
-        positions: positionText.split('|').map(text => text.trim()).filter(Boolean),
+        positions: splitMemberValues(positionText),
       };
       await saveMemberPermissions(updated);
       setEditing(updated);
@@ -169,8 +169,8 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
             <div className="member-live-head"><span>회원</span><span>기수 · 세션</span><span>직책 · 권한</span><span>관리</span></div>
             {filtered.map(member => <div className="member-live-row" key={member.uid}>
               <div><strong>{member.name}</strong><small>{member.studentId}</small></div>
-              <div><span>{member.generation}기</span><small>{member.sessions.join(', ')}</small></div>
-              <div><span>{member.positions.join(', ') || '일반부원'}</span><small>{roleNames[member.role]}{member.handoverAccess ? ' · 인수인계' : ''}{member.protected ? ' · 시스템 관리자' : ''}</small></div>
+              <div><span>{member.generation}기</span><small>{formatMemberValues(member.sessions)}</small></div>
+              <div><span>{formatMemberValues(member.positions) || '일반부원'}</span><small>{roleNames[member.role]}{member.handoverAccess ? ' · 인수인계' : ''}{member.protected ? ' · 시스템 관리자' : ''}</small></div>
               <button type="button" className="outline-action" disabled={locked(member)} onClick={() => startEdit(member)}>{locked(member) ? '보호됨' : '권한 수정'}</button>
             </div>)}
             {!loading && filtered.length === 0 && <div className="member-empty"><Users size={19}/> {members.length ? '검색 결과가 없습니다.' : '등록된 회원이 없습니다.'}</div>}
@@ -184,13 +184,13 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
           <div className="member-panel-top"><div><h2>신입부원 등록</h2><p>새로 등록하는 회원은 모두 일반부원이며, 별도 권한 부여는 권한 관리 탭에서 진행합니다.</p></div></div>
           <div className="member-registration">
             <div className="member-upload">
-              <div className="member-upload-title"><FileSpreadsheet size={22}/><div><strong>CSV 일괄 등록</strong><p>UTF-8 CSV · 1회 최대 60명 · 헤더: 학번, 이름, 기수, 세션, 직책(선택)</p></div></div>
+              <div className="member-upload-title"><FileSpreadsheet size={22}/><div><strong>CSV 일괄 등록</strong><p>UTF-8 CSV · 최대 60명 · 학번, 이름, 기수, 세션, 직책(선택)</p></div></div>
               <div className="member-steps" aria-label="CSV 등록 절차">
                 {([['choose','1. CSV 추가'],['review','2. 명단 확인'],['complete','3. 등록 완료']] as const).map(([step,label]) =>
                   <span key={step} className={csvStep === step ? 'active' : ''} aria-current={csvStep === step ? 'step' : undefined}>{label}</span>)}
               </div>
               {csvStep === 'choose' && <>
-                <p className="profile-help">회원 CSV를 선택하면 바로 계정을 만들지 않고, 등록 예정 인원과 전체 내용을 먼저 보여줍니다.</p>
+                <p className="profile-help">회원 CSV를 선택하면 바로 계정을 만들지 않고 등록 예정 명단을 먼저 보여줍니다. 여러 세션·직책은 쉼표로 구분하고, CSV 셀은 "기타,베이스"처럼 큰따옴표로 감싸 주세요. 쉼표 뒤 공백은 자동으로 제거합니다.</p>
                 <div className="member-upload-actions">
                   <label className="button button-primary member-file-picker"><Upload size={15}/> CSV 파일 선택<input type="file" accept=".csv,text/csv" onChange={event => void selectCsv(event)} /></label>
                   <button type="button" className="outline-action" onClick={downloadExampleCsv}><Download size={15}/> 양식 내려받기</button>
@@ -205,7 +205,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
                   </div>}
                   <p className="form-hint">파일: {fileName} · 아래 회원을 모두 확인해 주세요. 이미 가입한 학번은 덮어쓰지 않고 건너뜁니다.</p>
                   <div className="member-preview-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>기수</th><th>세션</th><th>직책</th><th>등록 예상</th></tr></thead>
-                    <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{member.sessions.join(', ')}</td><td>{member.positions.join(', ') || '—'}</td><td>{previewStatuses[member.studentId] === 'new' ? '신규 생성' : previewStatuses[member.studentId] === 'existing' ? '기존 계정' : '확인 중'}</td></tr>)}</tbody>
+                    <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{formatMemberValues(member.sessions)}</td><td>{formatMemberValues(member.positions) || '—'}</td><td>{previewStatuses[member.studentId] === 'new' ? '신규 생성' : previewStatuses[member.studentId] === 'existing' ? '기존 계정' : '확인 중'}</td></tr>)}</tbody>
                   </table></div>
                   {busy && <p className="member-progress" role="status">계정 등록 진행 중: {progressDone} / {preview.length}명 처리 완료</p>}
                   <div className="member-upload-actions">
@@ -232,12 +232,12 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
               </div>}
             </div>
             {csvStep === 'choose' && <div className="member-single"><h3>한 명씩 등록</h3>
-              <form onSubmit={event => { event.preventDefault(); void submit([{...individual, positions: individualPositionsText.split('|').map(p => p.trim()).filter(Boolean)}]); }} className="member-form">
+              <form onSubmit={event => { event.preventDefault(); void submit([{...individual, positions: splitMemberValues(individualPositionsText)}]); }} className="member-form">
                 <div className="form-grid">
                   <label>학번<input inputMode="numeric" maxLength={10} value={individual.studentId} placeholder="학번 10자리" onChange={event => setIndividual(previous => ({...previous, studentId: event.target.value.replace(/\D/g, '')}))} required /></label>
                   <label>이름<input value={individual.name} placeholder="이름" onChange={event => setIndividual(previous => ({...previous, name: event.target.value}))} required /></label>
                   <label>기수<input value={individual.generation} placeholder="예: 29 또는 27.5" onChange={event => setIndividual(previous => ({...previous, generation: event.target.value}))} required /></label>
-                  <label>직책 (선택)<input value={individualPositionsText} placeholder="여러 직책은 |로 구분" onChange={event => setIndividualPositionsText(event.target.value)}/></label>
+                  <label>직책 (선택)<input value={individualPositionsText} placeholder="여러 직책은 쉼표로 구분 (예: 홍보부장,총무)" onChange={event => setIndividualPositionsText(event.target.value)}/></label>
                 </div>
                 <div className="member-session-editor"><strong>세션</strong><div>{sessionList.map(session => <label key={session}><input type="checkbox" checked={individual.sessions.includes(session)} onChange={() => setIndividual(previous => ({...previous, sessions: previous.sessions.includes(session) ? previous.sessions.filter(item => item !== session) : [...previous.sessions, session]}))}/>{session}</label>)}</div></div>
                 <button type="submit" className="button button-primary" disabled={busy || individual.studentId.length !== 10 || individual.sessions.length === 0}>{busy ? '등록 중...' : '회원 등록'} <ArrowRight size={15}/></button>
@@ -270,7 +270,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
               </select>
             </label>
             <label>직책 (게시글 등에 표시)
-              <input value={positionText} onChange={event => setPositionText(event.target.value)} placeholder="예: 보컬파트장 | 홍보부장"/>
+              <input value={positionText} onChange={event => setPositionText(event.target.value)} placeholder="예: 보컬파트장,홍보부장"/>
             </label>
             <label className="member-handover-check"><input type="checkbox" checked={editing.handoverAccess} onChange={event => setEditing(previous => previous ? {...previous, handoverAccess: event.target.checked} : previous)}/>
               <span><strong>인수인계 접근 권한</strong><small>일반부원으로 변경한 OB 운영진에게도 별도로 부여할 수 있습니다.</small></span>
