@@ -59,6 +59,19 @@ test('long album titles stay on one line with ellipsis and aligned action text',
   assert.match(component, /<strong title=\{album\.title\}>\{album\.title\}<\/strong>/);
   assert.doesNotMatch(styles, /\.gallery-album-details\s*\{\s*flex-direction:\s*column;/);
 });
+test('main photo and thumb rail share a viewport-responsive height, independently scroll hidden thumbnails', () => {
+  assert.match(styles, /\.gallery-lightbox\s*\{[^}]*--gallery-stage-height:\s*clamp\([^;]*100dvh[^;]*\);/s);
+  assert.match(styles, /\.gallery-photo-stage\s*\{[^}]*height:\s*var\(--gallery-stage-height\);/s);
+  assert.match(styles, /\.gallery-thumb-panel\s*\{[^}]*height:\s*var\(--gallery-stage-height\);[^}]*max-height:\s*var\(--gallery-stage-height\);[^}]*overflow:\s*hidden;/s);
+  assert.match(styles, /\.gallery-thumb-list\s*\{[^}]*flex:\s*1\s+1\s+0;[^}]*overflow-y:\s*auto;[^}]*scrollbar-width:\s*none;/s);
+  assert.match(styles, /\.gallery-thumb-list::\-webkit-scrollbar\s*\{[^}]*display:\s*none;/s);
+  assert.match(styles, /\.gallery-slot-large\.gallery-slot-image\s*\{[^}]*object-fit:\s*contain;/s);
+  assert.match(component, /ref=\{thumbnailListRef\} className="gallery-thumb-list"/);
+  assert.match(component, /list\.scrollTop \+= image\.(top|bottom) - viewport\.(top|bottom)/);
+  assert.doesNotMatch(component, /좌우 화살표 또는 사진을 밀어서 넘길 수 있습니다/);
+  assert.doesNotMatch(component, /gallery-viewer-hint/);
+  assert.doesNotMatch(styles, /\.gallery-viewer-hint/);
+});
 test('album placeholders and lightbox have separate styles from the old broken photo items', () => {
   assert.match(styles, /\.gallery-slot-empty\s*\{[\s\S]*?align-items:\s*center;/);
   assert.match(styles, /\.gallery-lightbox-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px;/);
