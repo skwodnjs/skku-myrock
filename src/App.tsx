@@ -463,7 +463,32 @@ function App() {
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
       {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager key={rosterRevision} currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
     </main>
-    <footer className="site-footer"><div className="container footer-main"><div className="footer-brand"><span>모여락 <small>MYROCK</small></span><p>여기로, 모여락!</p></div><div className="footer-nav">{navGroups.map(group=><div key={group.label}><strong>{group.label}</strong>{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>)}<div className="footer-contacts"><strong>연락</strong><a href="tel:01063507007">회장 김서연 : 010-6350-7007</a><a href="tel:01076844336">부회장 신희수 : 010-7684-4336</a><a href="mailto:naa3000@naver.com"><Mail size={14} aria-hidden="true"/> 오류 보고 : naa3000@naver.com</a></div></div></div><div className="container footer-bottom"><span>© MYROCK · 성균관대학교 중앙 밴드동아리</span><span>기능 개발 중</span></div></footer>
+    <footer className="site-footer">
+      <div className="container footer-main">
+        <div className="footer-brand">
+          <span>모여락 <small>MYROCK</small></span>
+          <p>여기로, 모여락!</p>
+        </div>
+        <nav className="footer-nav" aria-label="푸터 사이트 메뉴">
+          {navGroups.map(group => <div key={group.label}>
+            <strong>{group.label}</strong>
+            {group.items.map(item => <button type="button" key={item.id} onClick={() => navigate(item.id)}>{item.label}</button>)}
+          </div>)}
+        </nav>
+      </div>
+      <div className="container footer-contact-section">
+        <div className="footer-contact-people">
+          <a href="tel:01063507007">회장 김서연 · 010-6350-7007</a>
+          <a href="tel:01076844336">부회장 신희수 · 010-7684-4336</a>
+        </div>
+        <a className="footer-bug-report" href="mailto:naa3000@naver.com">
+          <Mail size={14} aria-hidden="true" /> 오류 보고 · naa3000@naver.com
+        </a>
+      </div>
+      <div className="container footer-bottom">
+        <span>© MYROCK · 성균관대학교 중앙 밴드동아리</span>
+      </div>
+    </footer>
     {rosterResetting&&<div className="modal-overlay roster-reset-overlay" aria-live="polite">
       <div className="login-dialog roster-reset-dialog" role="status">
         <div className="profile-title"><Trash2 size={20}/><h2>명단 초기화 진행 중</h2></div>
