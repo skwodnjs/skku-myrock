@@ -59,6 +59,15 @@ test('long album titles stay on one line with ellipsis and aligned action text',
   assert.match(component, /<strong title=\{album\.title\}>\{album\.title\}<\/strong>/);
   assert.doesNotMatch(styles, /\.gallery-album-details\s*\{\s*flex-direction:\s*column;/);
 });
+test('lightbox keeps image stage stable and clips overflowing thumbnails to an invisible-scrollbar rail', () => {
+  assert.match(styles, /\.gallery-lightbox-layout\s*\{[^}]*height:\s*clamp\(250px,\s*calc\(100dvh - 185px\),\s*620px\);/s);
+  assert.match(styles, /\.gallery-photo-stage\s*\{[^}]*flex:\s*1 1 auto;[^}]*height:\s*0;[^}]*min-height:\s*0;/s);
+  assert.match(styles, /\.gallery-thumb-panel\s*\{[^}]*max-height:\s*100%;[^}]*overflow:\s*hidden;/s);
+  assert.match(styles, /\.gallery-thumb-list\s*\{[^}]*flex:\s*1 1 auto;[^}]*overflow-y:\s*auto;[^}]*scrollbar-width:\s*none;/s);
+  assert.match(styles, /\.gallery-thumb-list::-webkit-scrollbar\s*\{\s*display:\s*none;/);
+  assert.match(styles, /@media \(max-width:\s*680px\)[\s\S]*?\.gallery-photo-stage\s*\{[^}]*height:\s*clamp\(190px,\s*43dvh,\s*420px\);/);
+  assert.doesNotMatch(component, /gallery-viewer-hint|좌우 화살표 또는 사진을 밀어서/);
+});
 test('album placeholders and lightbox have separate styles from the old broken photo items', () => {
   assert.match(styles, /\.gallery-slot-empty\s*\{[\s\S]*?align-items:\s*center;/);
   assert.match(styles, /\.gallery-lightbox-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px;/);
