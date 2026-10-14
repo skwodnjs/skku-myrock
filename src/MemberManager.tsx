@@ -158,52 +158,71 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
 
   const filtered = members.filter(member => [member.studentId, member.name, member.generation, ...member.sessions, ...member.positions]
     .some(value => String(value).toLowerCase().includes(query.trim().toLowerCase())));
-  const locked = (member: MemberRecord) => member.uid === currentUid || member.protected;
   const progressPercent = preview.length > 0 ? Math.min(100, Math.round((progressDone / preview.length) * 100)) : 0;
 
   return <section className="container section-block">
-    <div className="admin-notice"><ShieldCheck size={19}/><span>회원 등록과 권한 변경은 Cloudflare Pages 서버에서 Firebase 로그인과 회장단 권한을 검증한 뒤 처리합니다. 기수로 권한이 자동 변경되지는 않습니다.</span></div>
+    <div className="admin-notice"><ShieldCheck size={19}/><span>부원 명단 조회와 변경 권한은 Cloudflare 서버에서 매 요청마다 검사합니다. 파트장은 세션, 실무단은 기본 정보, 회장단은 등록·권한·삭제까지 관리할 수 있습니다.</span></div>
     <div className="member-layout">
-      <nav className="member-tabs" aria-label="회원 관리 기능">
-        <button type="button" className={tab === 'list' ? 'active' : ''} onClick={() => setTab('list')}>회원 명단</button>
-        <button type="button" className={tab === 'add' ? 'active' : ''} onClick={() => {setEditing(null);setTab('add');}}>신입부원 등록</button>
+      <nav className="member-tabs" aria-label="부원 관리 기능">
+        <button type="button" className={tab === 'list' ? 'active' : ''} onClick={() => {setEditing(null);setTab('list');}}>부원 명단</button>
+        {isPresident && <button type="button" className={tab === 'add' ? 'active' : ''} onClick={() => {setEditing(null);setTab('add');}}>신입부원 등록</button>}
       </nav>
       <div className="member-panel">
         {error && <p className="form-error member-feedback" role="alert">{error}</p>}
         {message && <p className="member-success member-feedback" role="status">{message}</p>}
 
         {tab === 'list' && <>
-          <div className="member-panel-top"><div><h2>회원 명단</h2><p>등록된 회원을 확인하고 각 회원의 권한 수정 버튼으로 역할·직책·인수인계 접근을 변경할 수 있습니다.</p></div>
-            <button type="button" className="button button-primary" onClick={() => setTab('add')}><Plus size={16}/> 회원 등록</button></div>
+          <div className="member-panel-top"><div><h2>부원 명단</h2><p>전체 부원을 이름 가나다순으로 표시합니다. 권한에 따라 수정 가능한 항목이 다릅니다.</p></div>
+            {isPresident && <button type="button" className="button button-primary" onClick={() => setTab('add')}><Plus size={16}/> 부원 등록</button>}</div>
           <div className="member-toolbar">
             <label className="input-search member-search"><Search size={16}/><input placeholder="학번, 이름, 기수, 세션 검색" aria-label="회원 검색" value={query} onChange={event => setQuery(event.target.value)}/></label>
             <button type="button" className="outline-action" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15}/> 새로고침</button>
           </div>
           <div className="member-live-list">
-            <div className="member-live-head"><span>회원</span><span>기수 · 세션</span><span>직책 · 권한</span><span>관리</span></div>
+            <div className="member-live-head"><span>부원</span><span>기수 · 세션</span><span>직책 · 권한</span><span>관리</span></div>
             {filtered.map(member => <div className="member-entry" key={member.uid}>
               <div className="member-live-row">
-              <div><strong>{member.name}</strong><small>{member.studentId}</small></div>
-              <div><span>{member.generation}기</span><small>{formatMemberValues(member.sessions)}</small></div>
-              <div><span>{formatMemberValues(member.positions) || '일반부원'}</span><small>{roleNames[member.role]}{member.handoverAccess ? ' · 인수인계' : ''}{member.protected ? ' · 시스템 관리자' : ''}</small></div>
-              <button type="button" className="outline-action" disabled={locked(member)} onClick={() => startEdit(member)}>{locked(member) ? '보호됨' : '권한 수정'}</button>
+                <div><strong>{member.name}</strong><small>{member.studentId}</small></div>
+                <div><span>{member.generation}기</span><small>{formatMemberValues(member.sessions)}</small></div>
+                <div><span>{formatMemberValues(member.positions) || '일반부원'}</span><small>{member.role === 'member' && member.handoverAccess ? 'OB 운영진' : roleNames[member.role]}{member.protected ? ' · 시스템 관리자' : ''}</small></div>
+                <div className="member-actions">
+                  <button type="button" className="outline-action" disabled={busy || member.protected} onClick={() => startEdit(member,'sessions')}>세션 수정</button>
+                  {canEditDetails && <button type="button" className="outline-action" disabled={busy || member.protected} onClick={() => startEdit(member,'details')}>정보 수정</button>}
+                  {isPresident && <>
+                    <button type="button" className="outline-action" disabled={busy || member.protected || member.uid === currentUid} onClick={() => startEdit(member,'permissions')}>권한 수정</button>
+                    <button type="button" className="outline-action" disabled={busy || member.protected || member.uid === currentUid} onClick={() => void resetPassword(member)}><KeyRound size={13}/> 비밀번호 초기화</button>
+                    <button type="button" className="outline-action member-danger" disabled={busy || member.protected || member.uid === currentUid} onClick={() => void removeMember(member)}><Trash2 size={13}/> 삭제</button>
+                  </>}
+                </div>
               </div>
-              {editing?.uid === member.uid && <form onSubmit={event => void saveEdit(event)} className="member-permission-form member-inline-edit" aria-label={`${member.name} 회원 권한 수정`}>
-                <div className="member-selected"><strong>{editing.name} · 권한 수정</strong><span>{editing.studentId} · {editing.generation}기</span></div>
-                <label>운영 권한
-                  <select value={editing.role} onChange={event => setEditing(previous => previous ? {...previous, role: event.target.value as MemberRole} : previous)}>
-                    {Object.entries(roleNames).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
-                  </select>
-                </label>
-                <label>직책 (게시글 등에 표시)
-                  <input value={positionText} onChange={event => setPositionText(event.target.value)} placeholder="예: 보컬파트장,홍보부장"/>
-                </label>
-                <label className="member-handover-check"><input type="checkbox" checked={editing.handoverAccess} onChange={event => setEditing(previous => previous ? {...previous, handoverAccess: event.target.checked} : previous)}/>
-                  <span><strong>인수인계 접근 권한</strong><small>일반부원으로 변경한 OB 운영진에게도 별도로 부여할 수 있습니다.</small></span>
-                </label>
-                <p className="form-hint">최고관리자 권한 부여 기능은 제공하지 않습니다. 본인 및 기존 최고관리자의 권한 변경도 차단됩니다.</p>
+              {editing?.uid === member.uid && <form onSubmit={event => void saveEdit(event)} className="member-permission-form member-inline-edit" aria-label={`${member.name} 부원 정보 수정`}>
+                <div className="member-selected"><strong>{editing.name} · {editMode === 'sessions' ? '세션 수정' : editMode === 'details' ? '기본 정보 수정' : '권한 수정'}</strong><span>{editing.studentId} · {editing.generation}기</span></div>
+                {editMode === 'sessions' && <div className="member-session-editor">
+                  <strong>참여 세션 (1개 이상)</strong>
+                  <div>{sessionList.map(session => <label key={session}><input type="checkbox" checked={editing.sessions.includes(session)} onChange={() => setEditing(prev => prev ? {...prev, sessions: prev.sessions.includes(session) ? prev.sessions.filter(value => value !== session) : [...prev.sessions,session]} : prev)}/>{session}</label>)}</div>
+                </div>}
+                {editMode === 'details' && canEditDetails && <>
+                  <div className="form-grid">
+                    <label>이름<input value={editing.name} maxLength={60} required onChange={event => setEditing(prev => prev ? {...prev,name:event.target.value} : prev)}/></label>
+                    <label>학번<input value={editing.studentId} inputMode="numeric" maxLength={10} required onChange={event => setEditing(prev => prev ? {...prev,studentId:event.target.value.replace(/\D/g,'')} : prev)}/></label>
+                    <label>기수<input value={editing.generation} maxLength={20} required onChange={event => setEditing(prev => prev ? {...prev,generation:event.target.value} : prev)}/></label>
+                    <label>직책<input value={positionText} onChange={event => setPositionText(event.target.value)} placeholder="홍보부장,총무"/></label>
+                  </div>
+                  <p className="form-hint">학번을 바꾸면 로그인할 때 사용하는 학번도 함께 바뀝니다. 비밀번호는 변경되지 않습니다.</p>
+                </>}
+                {editMode === 'permissions' && isPresident && <>
+                  <label>운영 권한
+                    <select value={editing.role} onChange={event => setEditing(prev => prev ? {...prev,role:event.target.value as MemberRole} : prev)}>
+                      {Object.entries(roleNames).map(([key,value]) => <option key={key} value={key}>{value}</option>)}
+                    </select>
+                  </label>
+                  <label className="member-handover-check"><input type="checkbox" checked={editing.handoverAccess} onChange={event => setEditing(prev => prev ? {...prev,handoverAccess:event.target.checked} : prev)}/>
+                    <span><strong>OB 운영진 · 인수인계 접근</strong><small>일반부원이며 이 항목에 체크된 경우 내 정보의 권한에 'OB 운영진'으로 표시됩니다. 부원 명단 조회 권한은 자동으로 생기지 않습니다.</small></span>
+                  </label>
+                  <p className="form-hint">본인과 시스템 관리자 계정의 권한은 변경할 수 없습니다.</p>
+                </>}
                 <div className="member-edit-actions">
-                  <button type="submit" className="button button-primary" disabled={busy}>{busy ? '저장 중...' : '권한 및 직책 저장'} <Check size={16}/></button>
+                  <button type="submit" className="button button-primary" disabled={busy || (editMode === 'sessions' && editing.sessions.length === 0)}>{busy ? '저장 중...' : '변경 사항 저장'} <Check size={16}/></button>
                   <button type="button" className="outline-action" disabled={busy} onClick={() => setEditing(null)}>취소</button>
                 </div>
               </form>}
@@ -211,12 +230,11 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
             {!loading && filtered.length === 0 && <div className="member-empty"><Users size={19}/> {members.length ? '검색 결과가 없습니다.' : '등록된 회원이 없습니다.'}</div>}
             {loading && <div className="member-empty">회원 정보를 불러오는 중입니다...</div>}
           </div>
-          {cursor && <button type="button" className="outline-action member-loadmore" onClick={() => void more()} disabled={loading}>회원 더 보기 <ArrowRight size={15}/></button>}
-          <p className="form-hint">본인과 최고관리자 계정은 안전을 위해 이 화면에서 권한을 변경할 수 없습니다.</p>
+          <p className="form-hint">시스템 관리자 계정은 보호되며, 본인의 권한 변경·계정 삭제·비밀번호 초기화도 제한됩니다.</p>
         </>}
 
-        {tab === 'add' && <>
-          <div className="member-panel-top"><div><h2>신입부원 등록</h2><p>새로 등록하는 회원은 모두 일반부원으로 생성됩니다. 권한은 회원 명단에서 변경할 수 있고, 초기 비밀번호는 학번 10자리와 같습니다.</p></div></div>
+        {tab === 'add' && isPresident && <>
+          <div className="member-panel-top"><div><h2>신입부원 등록</h2><p>새로 등록하는 부원은 모두 일반부원으로 생성됩니다. 권한은 부원 명단에서 변경할 수 있고, 초기 비밀번호는 학번 10자리와 같습니다.</p></div></div>
           <div className="member-registration">
             <div className="member-upload">
               <div className="member-upload-title"><FileSpreadsheet size={22}/><div><strong>CSV 일괄 등록</strong><p>UTF-8 CSV · 최대 60명 · 학번, 이름, 기수, 세션, 직책(선택)</p></div></div>
@@ -225,7 +243,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
                   <span key={step} className={csvStep === step ? 'active' : ''} aria-current={csvStep === step ? 'step' : undefined}>{label}</span>)}
               </div>
               {csvStep === 'choose' && <>
-                <p className="profile-help">회원 CSV를 선택하면 바로 계정을 만들지 않고 등록 예정 명단을 먼저 보여줍니다. 여러 세션·직책은 쉼표로 구분하고, CSV 셀은 "기타,베이스"처럼 큰따옴표로 감싸 주세요. 쉼표 뒤 공백은 자동으로 제거합니다.</p>
+                <p className="profile-help">부원 CSV를 선택하면 바로 계정을 만들지 않고 등록 예정 명단을 먼저 보여줍니다. 여러 세션·직책은 쉼표로 구분하고, CSV 셀은 "기타,베이스"처럼 큰따옴표로 감싸 주세요. 쉼표 뒤 공백은 자동으로 제거합니다.</p>
                 <div className="member-upload-actions">
                   <label className="button button-primary member-file-picker"><Upload size={15}/> CSV 파일 선택<input type="file" accept=".csv,text/csv" onChange={event => void selectCsv(event)} /></label>
                   <button type="button" className="outline-action" onClick={downloadExampleCsv}><Download size={15}/> 양식 내려받기</button>
