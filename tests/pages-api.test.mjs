@@ -7,6 +7,7 @@ import {
 import { onRequestPost as registerHandler } from '../functions/api/members/register.js';
 import { onRequestPost as permissionHandler } from '../functions/api/members/permissions.js';
 import { onRequestGet as listHandler } from '../functions/api/members/list.js';
+import { onRequestPost as previewHandler } from '../functions/api/members/preview.js';
 
 const alice = {
   studentId: '2026300001',
@@ -54,10 +55,13 @@ test('all membership API routes reject requests without login', async () => {
   const post = new Request('https://skku-myrock.pages.dev/api/members/register', {
     method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({members:[alice]}),
   });
+  const preview = new Request('https://skku-myrock.pages.dev/api/members/preview', {
+    method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({members:[alice]}),
+  });
   const permissions = new Request('https://skku-myrock.pages.dev/api/members/permissions', {
     method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({uid:'abcdefghij_12',role:'president',handoverAccess:false,positions:[]}),
   });
-  for (const [handler, request] of [[listHandler,get],[registerHandler,post],[permissionHandler,permissions]]) {
+  for (const [handler, request] of [[listHandler,get],[previewHandler,preview],[registerHandler,post],[permissionHandler,permissions]]) {
     const response = await handler({request,env:{}});
     assert.equal(response.status,401);
     assert.equal(response.headers.get('cache-control'),'no-store');
