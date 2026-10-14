@@ -74,8 +74,8 @@ export function ScheduleLanding({
       </div>
       <ol className="schedule-usage-list">
         <li><span aria-hidden="true">01</span><p>학번으로 다른 부원을 시간표에 초대할 수 있습니다.</p></li>
-        <li><span aria-hidden="true">02</span><p>운영진은 구성팀 전용 시간표를 개설할 수 있습니다.</p></li>
-        <li><span aria-hidden="true">03</span><p>합주 시간이 확정되면 참여자의 다른 시간표에서 겹치는 가능 시간이 자동으로 해제됩니다.</p></li>
+        <li><span aria-hidden="true">02</span><p>운영진 권한이 있으면 구성팀 시간표를 개설해줄 수 있습니다.</p></li>
+        <li><span aria-hidden="true">03</span><p>시간표에서 합주 시간을 확정할 수 있습니다. 합주 시간을 확정하면 본인의 다른 시간표에서는 해당 시간이 자동으로 선택 해제됩니다.</p></li>
       </ol>
     </aside>
     <section className="container section-block schedule-landing">
