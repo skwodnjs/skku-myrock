@@ -203,38 +203,46 @@
 }
 
 
-/* Current MYROCK officers: eight individual 3:4 portrait cards. */
+/* 28기 MYROCK officers: compact academic-directory-style portrait rows. */
 .leadership-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 28px 22px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 26px;
+  row-gap: 0;
+  border-top: 1px solid var(--border);
 }
 .leader-item {
-  display: block;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
   min-width: 0;
+  padding: 19px 0 18px;
+  border-bottom: 1px solid var(--border);
 }
 .leader-item .leader-photo {
   box-sizing: border-box;
-  width: 100%;
+  width: 76px;
+  min-width: 0;
   height: auto;
   min-height: 0;
   aspect-ratio: 3 / 4;
   border: 1px solid #dce6e2;
   background: #f2f5f3;
 }
-.leader-item .leader-photo .placeholder-symbol {
-  display: none;
-}
+.leader-item .leader-photo .placeholder-symbol { display: none; }
 .leader-item .leader-photo .placeholder-text {
-  font-size: 12px;
+  font-size: 10px;
   color: #a0aaa6;
 }
 .leader-item > .leader-description {
   display: block;
-  padding: 13px 1px 0;
-  text-align: center;
+  min-width: 0;
+  padding: 4px 0 0;
+  text-align: left;
 }
 .leader-item .leader-description h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 7px;
@@ -248,9 +256,7 @@
   overflow-wrap: break-word;
   word-break: keep-all;
 }
-.plain-links a {
-  text-decoration: none;
-}
+.plain-links a { text-decoration: none; }
 .plain-links .social-link-label {
   display: flex;
   align-items: baseline;
@@ -268,31 +274,30 @@
   outline: 2px solid var(--accent-dark);
   outline-offset: 3px;
 }
-@media (max-width: 950px) {
+@media (max-width: 1000px) {
   .leadership-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 25px 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
   }
 }
 @media (max-width: 620px) {
   .leadership-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 23px 13px;
+    grid-template-columns: minmax(0, 1fr);
   }
   .leader-item {
-    display: block;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px 0;
   }
   .leader-item .leader-photo {
-    width: 100%;
+    width: 72px;
     min-width: 0;
     height: auto;
   }
   .leader-item > .leader-description {
-    padding: 11px 0 0;
+    padding: 2px 0 0;
   }
   .leader-item .leader-description h3 { font-size: 14px; }
-  .leader-item .leader-description p { font-size: 11px; }
-  .plain-links .social-link-label {
-    gap: 6px;
-  }
+  .leader-item .leader-description p { font-size: 12px; }
+  .plain-links .social-link-label { gap: 6px; }
 }
