@@ -7,11 +7,13 @@ import type { MemberProfile, Session } from './firebase';
 import type { FormEvent, ReactNode } from 'react';
 import {
   ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronDown,
+  Trash2,
   CircleHelp, ClipboardList, ExternalLink, FileText, Instagram,
   LockKeyhole, Mail, Menu, Plus, Search, Users, X, UserRound, LogOut,
 } from 'lucide-react';
 import logo from './logo-transparent.png';
 import MemberManager from './MemberManager';
+import { purgeAllOtherMembers } from './memberAdmin';
 import PasswordChange from './PasswordChange';
 
 type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
@@ -249,6 +251,9 @@ function App() {
   const [authPending,setAuthPending] = useState(true);
   const [profileError,setProfileError] = useState('');
   const [hasSystemClaim,setHasSystemClaim] = useState(false);
+  const [rosterResetting,setRosterResetting] = useState(false);
+  const [rosterResetDeleted,setRosterResetDeleted] = useState(0);
+  const [rosterRevision,setRosterRevision] = useState(0);
   useEffect(()=>{
     let live = true;
     const unsub = onAuthStateChanged(auth,async current=>{
@@ -279,6 +284,30 @@ function App() {
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
   const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
   const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
+  async function resetRosterExceptMyself() {
+    if (rosterResetting || !user || !profile?.superadmin || !hasSystemClaim) return;
+    const confirmed = window.confirm(
+      '개발용 명단 초기화입니다. 본인 계정을 제외한 모든 부원의 Firestore 프로필과 Firebase 로그인 계정이 삭제됩니다.\\n\\n삭제된 계정은 자동 복구할 수 없습니다. 실행할까요?'
+    );
+    if (!confirmed) return;
+    setAccountOpen(false);
+    setMenuOpen(false);
+    setRosterResetDeleted(0);
+    setRosterResetting(true);
+    try {
+      const deleted = await purgeAllOtherMembers(setRosterResetDeleted);
+      setRosterRevision(previous => previous + 1);
+      navigate('members');
+      window.alert('명단 초기화가 완료되었습니다. 본인을 제외하고 삭제한 부원: ' + deleted + '명');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '알 수 없는 서버 오류';
+      window.alert('명단 초기화가 중단되었습니다.\\n' + message + '\\n\\nFirebase Auth 및 Firestore의 실제 상태를 확인한 뒤 다시 시도해 주세요.');
+      setRosterRevision(previous => previous + 1);
+    } finally {
+      setRosterResetting(false);
+    }
+  }
+  const isDeveloperSuperadmin=Boolean(user && profile?.superadmin && hasSystemClaim);
   const currentLevel=managementLevel(profile,hasSystemClaim);
   const canManage=currentLevel!==null;
   const canHandover=canViewHandover(profile,hasSystemClaim);
@@ -287,10 +316,10 @@ function App() {
       <button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button>
       <nav className="desktop-nav" aria-label="주 메뉴">{navGroups.map(group=><div className="more-wrapper nav-group" key={group.label} onMouseEnter={()=>setOpenGroup(group.label)} onMouseLeave={()=>setOpenGroup(null)}><button type="button" aria-expanded={openGroup===group.label} className={group.items.some(i=>i.id===page)?'active':''} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}>{group.label} <ChevronDown size={13}/></button>{openGroup===group.label&&<div className="more-menu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}</nav>
       <div className="header-actions">
-        {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"><button className="login-button account-toggle" type="button" onClick={()=>setAccountOpen(!accountOpen)} aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout}>로그아웃</button></div>}</div>}
+        {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"><button className="login-button account-toggle" type="button" onClick={()=>setAccountOpen(!accountOpen)} aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃</button>{isDeveloperSuperadmin && <button type="button" className="developer-reset-action" disabled={rosterResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화</button>}</div>}</div>}
         <button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
       </div>
-    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout}>로그아웃<LogOut size={16}/></button></>}</div></nav>}
+    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <button type="button" className="developer-reset-action" disabled={rosterResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button>}</>}</div></nav>}
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} notify={notify}/>}
@@ -301,9 +330,17 @@ function App() {
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<Finance notify={notify}/>}
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
-      {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
+      {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager key={rosterRevision} currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
     </main>
     <footer className="site-footer"><div className="container footer-main"><div className="footer-brand"><span>모여락 <small>MYROCK</small></span><p>여기로, 모여락!</p></div><div className="footer-nav">{navGroups.map(group=><div key={group.label}><strong>{group.label}</strong>{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>)}<div><strong>연락</strong><span><Mail size={14}/> 운영진 연락처 등록 예정</span></div></div></div><div className="container footer-bottom"><span>© MYROCK · 성균관대학교 중앙 밴드동아리</span><span>기능 개발 중</span></div></footer>
+    {rosterResetting&&<div className="modal-overlay roster-reset-overlay" aria-live="polite">
+      <div className="login-dialog roster-reset-dialog" role="status">
+        <div className="profile-title"><Trash2 size={20}/><h2>명단 초기화 진행 중</h2></div>
+        <p>본인 계정은 유지하고 다른 부원들의 Firebase 로그인 계정과 프로필을 정리하고 있습니다.</p>
+        <p className="roster-reset-counter">삭제 확인: <strong>{rosterResetDeleted}명</strong></p>
+        <p className="form-hint">완료될 때까지 창을 새로고침하거나 닫지 마세요.</p>
+      </div>
+    </div>}
     {loginOpen&&<LoginDialog close={()=>setLoginOpen(false)} notify={notify}/>}
     {toast&&<div className="toast" role="status"><CircleHelp size={17}/><span>{toast}</span><button type="button" aria-label="알림 닫기" onClick={()=>setToast('')}><X size={15}/></button></div>}
   </div>;
