@@ -4,6 +4,46 @@ export const PROJECT_ID = 'skku-myrock';
 export const FIRESTORE_ROOT = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
 export const AUTH_ROOT = 'https://identitytoolkit.googleapis.com/v1/projects/' + PROJECT_ID;
 const ROLES = new Set(['member', 'part_leader', 'staff', 'president']);
+const ROLE_LEVEL = { member: 0, part_leader: 1, staff: 2, president: 3 };
+export function canPerform(caller, requiredRole) {
+  const level = caller?.superadmin === true ? 3 : (ROLE_LEVEL[caller?.role] ?? 0);
+  return level >= ROLE_LEVEL[requiredRole];
+}
+export function validateUid(uid) {
+  if (typeof uid !== 'string' || !/^[A-Za-z0-9_-]{10,128}$/.test(uid)) {
+    reject('부원 식별자가 올바르지 않습니다.');
+  }
+  return uid;
+}
+export function validateStudentId(studentId) {
+  if (typeof studentId !== 'string' || !/^\d{10}$/.test(studentId)) {
+    reject('학번은 숫자 10자리여야 합니다.');
+  }
+  return studentId;
+}
+export function validateDetails(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) reject('부원 정보가 올바르지 않습니다.');
+  return {
+    uid: validateUid(input.uid),
+    name: textField(input.name, '이름', 60),
+    studentId: validateStudentId(input.studentId),
+    generation: textField(input.generation, '기수', 20),
+    positions: positionsField(input.positions),
+    expectedUpdateTime: validateUpdateTime(input.expectedUpdateTime),
+  };
+}
+export function validateSessionsChange(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) reject('세션 변경 정보가 올바르지 않습니다.');
+  return {
+    uid: validateUid(input.uid),
+    sessions: sessionsField(input.sessions),
+    expectedUpdateTime: validateUpdateTime(input.expectedUpdateTime),
+  };
+}
+export function validateUpdateTime(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(value)) reject('정보가 오래되었습니다. 명단을 다시 조회해 주세요.', 409);
+  return value;
+}
 const SESSIONS = new Set(['보컬', '기타', '베이스', '드럼', '키보드']);
 
 export class ApiError extends Error {
@@ -14,9 +54,7 @@ export const reject = (message, status = 400) => { throw new ApiError(status, me
 // Newly created accounts use the 10-digit student ID as their initial password.
 // Never apply this to an existing account; users may change it later.
 export function initialPasswordForStudentId(studentId) {
-  if (typeof studentId !== 'string' || !/^\d{10}$/.test(studentId)) {
-    reject('학번은 10자리 숫자여야 합니다.');
-  }
+  validateStudentId(studentId);
   return studentId;
 }
 export function textField(value, name, max = 80) {
@@ -60,12 +98,12 @@ export function validateMembers(input) {
 }
 export function validatePermissions(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) reject('권한 변경 입력값이 올바르지 않습니다.');
-  if (typeof input.uid !== 'string' || !/^[A-Za-z0-9_-]{10,128}$/.test(input.uid)) reject('회원 식별자가 올바르지 않습니다.');
+  validateUid(input.uid);
   if (!ROLES.has(input.role)) reject('회원 권한을 선택해 주세요.');
   if (typeof input.handoverAccess !== 'boolean') reject('인수인계 접근 권한을 확인해 주세요.');
   return {
     uid: input.uid, role: input.role, handoverAccess: input.handoverAccess,
-    positions: positionsField(input.positions),
+    expectedUpdateTime: validateUpdateTime(input.expectedUpdateTime),
   };
 }
 export function fieldToJs(value) {
@@ -102,6 +140,7 @@ export function memberView(doc) {
     role: ROLES.has(data.role) ? data.role : 'member',
     handoverAccess: data.handoverAccess === true,
     protected: data.superadmin === true,
+    updateTime: doc.updateTime ?? '',
   };
 }
 export function success(data, status = 200) {
