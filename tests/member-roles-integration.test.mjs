@@ -185,6 +185,24 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
     assert.equal((await deleteMember({request:post('president','delete',{
       uid:actors.president.uid,expectedUpdateTime:docs.get(actors.president.uid).updateTime,
     }),env})).status,403);
+    assert.equal((await purge({request:post('president','purge',{confirmation:RESET_CONFIRMATION}),env})).status,403);
+    assert.equal((await purge({request:post('super','purge',{confirmation:'wrong'}),env})).status,400);
+    let totalRemoved = 0;
+    let completed = false;
+    for (let iteration = 0; iteration < 10 && !completed; iteration++) {
+      const response = await purge({request:post('super','purge',{confirmation:RESET_CONFIRMATION}),env});
+      assert.equal(response.status,200);
+      const data = await response.json();
+      assert.equal(data.error,undefined);
+      assert.ok(data.deleted >= 0 && data.deleted <= 5);
+      totalRemoved += data.deleted;
+      completed = data.done;
+    }
+    assert.equal(completed,true);
+    assert.equal(totalRemoved,7);
+    assert.deepEqual([...docs.keys()],[actors.super.uid]);
+    assert.deepEqual([...accounts.keys()],[actors.super.uid]);
+
   } finally {
     globalThis.fetch = previousFetch;
   }
