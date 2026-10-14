@@ -127,7 +127,7 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
           <span className="gallery-cover-count">{album.photos.length} PHOTOS</span>
         </div>
         <div className="gallery-album-details">
-          <strong>{album.title}</strong>
+          <strong title={album.title}>{album.title}</strong>
           <span className="gallery-album-action">{album.category} <span aria-hidden="true">·</span> 전체보기 <ArrowUpRight size={15} aria-hidden="true" /></span>
         </div>
       </button>)}
