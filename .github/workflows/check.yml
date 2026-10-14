@@ -1,0 +1,25 @@
+name: Check website and functions
+
+on:
+  push:
+    branches:
+      - main
+      - feature/secure-member-management-20261014
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install website dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build website
+        run: npm run build
+      - name: Install Functions dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+      - name: Check Functions syntax
+        run: npm --prefix functions run check
