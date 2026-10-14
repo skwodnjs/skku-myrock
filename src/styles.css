@@ -136,3 +136,22 @@
   .member-live-row>.member-actions{grid-column:1/-1;grid-row:3;justify-content:flex-start}
   .member-live-row>.member-actions button{grid-column:auto;grid-row:auto}
 }
+
+/* Developer-only destructive roster reset and incremental directory loading */
+.account-menu .developer-reset-action,
+.mobile-nav .developer-reset-action {
+  color: #c83237 !important;
+  font-weight: 700;
+}
+.account-menu .developer-reset-action:hover,
+.mobile-nav .developer-reset-action:hover {
+  color: #ad252b !important;
+  background: #fff1f2;
+}
+.account-menu .developer-reset-action:disabled,
+.mobile-nav .developer-reset-action:disabled { opacity: .5; cursor: wait; }
+.member-scroll-sentinel { height: 2px; width: 100%; }
+.member-scroll-status { margin: 13px 0 5px; color: #47655d; font-size: 13px; text-align: center; }
+.roster-reset-dialog { max-width: 430px; }
+.roster-reset-counter { margin-top: 20px; font-size: 17px; }
+.roster-reset-counter strong { color: #b93838; }
