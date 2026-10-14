@@ -476,17 +476,19 @@ function App() {
           </div>)}
         </nav>
       </div>
-      <div className="container footer-contact-section">
-        <div className="footer-contact-people">
-          <a href="tel:01063507007">회장 김서연 · 010-6350-7007</a>
-          <a href="tel:01076844336">부회장 신희수 · 010-7684-4336</a>
+      <div className="container footer-lower">
+        <div className="footer-contact-section">
+          <div className="footer-contact-people">
+            <span>회장 김서연 · 010-6350-7007</span>
+            <span>부회장 신희수 · 010-7684-4336</span>
+          </div>
+          <span className="footer-bug-report">
+            <Mail size={14} aria-hidden="true" /> 오류 보고 · naa3000@naver.com
+          </span>
         </div>
-        <a className="footer-bug-report" href="mailto:naa3000@naver.com">
-          <Mail size={14} aria-hidden="true" /> 오류 보고 · naa3000@naver.com
-        </a>
-      </div>
-      <div className="container footer-bottom">
-        <span>© MYROCK · 성균관대학교 중앙 밴드동아리</span>
+        <div className="footer-bottom">
+          <span>© MYROCK · 성균관대학교 중앙 밴드동아리</span>
+        </div>
       </div>
     </footer>
     {rosterResetting&&<div className="modal-overlay roster-reset-overlay" aria-live="polite">
