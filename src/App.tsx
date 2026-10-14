@@ -16,8 +16,10 @@ import MemberManager from './MemberManager';
 import { purgeAllOtherMembers } from './memberAdmin';
 import PasswordChange from './PasswordChange';
 import PhotoGallery from './PhotoGallery';
+import { findNotice, notices } from './noticesData';
+import type { NoticePost } from './noticesData';
 
-type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -41,17 +43,17 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : `/${page}`;
+const noticeIdFromPath = (): string | null => {
+  const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
+  return match ? match[1] : null;
+};
 const pathToPage = (): Page => {
+  if (noticeIdFromPath()) return 'notice-detail';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
   return allNav.some(item => item.id === path) ? path as Page : 'home';
 };
 
-const posts = [
-  { id: 1, category: '공지', title: '동아리 공지사항이 이곳에 표시됩니다', description: '운영진이 등록한 안내가 표시될 예정입니다.', date: '—' },
-  { id: 2, category: '공연', title: '공연 일정 및 참가 안내', description: '공연 일정과 관련 자료를 확인할 수 있습니다.', date: '—' },
-  { id: 3, category: '행사', title: 'MT 및 동아리 행사 안내', description: '일정과 준비물 안내가 표시될 예정입니다.', date: '—' },
-];
 const sessions = ['보컬', '기타', '베이스', '드럼', '키보드'];
 
 function Placeholder({ label, className = '' }: { label: string; className?: string }) {
@@ -73,7 +75,7 @@ function EmptyState({ icon, title, description }: { icon?: ReactNode; title: str
   return <div className="empty-state">{icon && <span className="empty-icon">{icon}</span>}<strong>{title}</strong><p>{description}</p></div>;
 }
 
-function Home({ navigate, notify }: { navigate: Navigate; notify: Notify }) {
+function Home({ navigate, openNotice }: { navigate: Navigate; openNotice: (id: string) => void }) {
   return <>
     <section className="hero container">
       <div className="hero-copy">
@@ -87,7 +89,7 @@ function Home({ navigate, notify }: { navigate: Navigate; notify: Notify }) {
     <section className="container home-updates">
       <SectionHeading title="공지사항" aside="모여락의 새로운 소식" action="전체 보기" onAction={() => navigate('news')} />
       <div className="simple-notice-list">
-        {posts.slice(0, 3).map(post => <button type="button" className="simple-notice" key={post.id} onClick={() => notify()}>
+        {notices.slice(0, 3).map(post => <button type="button" className="simple-notice" key={post.id} onClick={() => openNotice(post.id)}>
           <span className="notice-category">{post.category}</span><span className="notice-title">{post.title}</span><span className="notice-date">{post.date}</span><ArrowUpRight size={16} aria-hidden="true" />
         </button>)}
       </div>
@@ -150,14 +152,87 @@ function About({ navigate }: { navigate: Navigate }) {
   </>;
 }
 
-function News({ notify }: { notify: Notify }) {
+
+function News({ notify, openNotice }: { notify: Notify; openNotice: (id: string) => void }) {
   const [category, setCategory] = useState('전체');
   const [query, setQuery] = useState('');
-  const filtered = posts.filter(post => (category === '전체' || post.category === category) && (post.title + post.description).includes(query));
-  return <><PageHeading tag="NOTICE" title="공지사항" description="공연, 행사, 동아리 운영에 관한 소식을 확인하세요." />
-    <section className="container section-block news-page"><div className="toolbar"><div className="tabs" aria-label="공지 분류">{['전체', '공지', '공연', '행사'].map(c => <button type="button" key={c} className={category === c ? 'active' : ''} onClick={() => setCategory(c)}>{c}</button>)}</div><div className="toolbar-actions"><label className="input-search"><Search size={16}/><input aria-label="공지사항 검색" placeholder="제목 검색" value={query} onChange={e => setQuery(e.target.value)}/></label><button type="button" className="button button-primary" onClick={() => notify()}><Plus size={15}/> 글쓰기</button></div></div>
-    <div className="table-shell"><div className="notice-table-head"><span>분류</span><span>제목</span><span>등록일</span></div>{filtered.map(post => <button type="button" key={post.id} className="notice-table-row" onClick={() => notify()}><span className="notice-category">{post.category}</span><span><strong>{post.title}</strong><small>{post.description}</small></span><span>{post.date}</span></button>)}{filtered.length === 0 && <EmptyState title="검색 결과가 없습니다" description="검색어 또는 분류를 변경해 보세요." />}</div>
-    <div className="list-bottom"><span>미리보기용 예시 공지입니다</span><span className="page-count">01 <span>/</span> 01</span></div></section>
+  const search = query.trim().toLocaleLowerCase('ko');
+  const filtered = notices.filter(post =>
+    (category === '전체' || post.category === category) &&
+    (post.title + post.description + post.body).toLocaleLowerCase('ko').includes(search)
+  );
+  return <>
+    <PageHeading tag="NOTICE" title="공지사항" description="공연, 행사, 동아리 운영에 관한 소식을 확인하세요." />
+    <section className="container section-block news-page">
+      <div className="toolbar">
+        <div className="tabs" aria-label="공지 분류">
+          {['전체', '공지', '공연', '행사'].map(c => <button type="button" key={c}
+            className={category === c ? 'active' : ''} aria-pressed={category === c}
+            onClick={() => setCategory(c)}>{c}</button>)}
+        </div>
+        <div className="toolbar-actions">
+          <label className="input-search"><Search size={16}/><input aria-label="공지사항 검색"
+            placeholder="제목 검색" value={query} onChange={e => setQuery(e.target.value)} /></label>
+          <button type="button" className="button button-primary"
+            onClick={() => notify('현재 공지사항은 개발용 고정 데이터입니다. 글쓰기는 추후 연결할 예정입니다.')}>
+            <Plus size={15}/> 글쓰기
+          </button>
+        </div>
+      </div>
+      <div className="table-shell">
+        <div className="notice-table-head"><span>분류</span><span>제목</span><span>등록일</span></div>
+        {filtered.map(post => <button type="button" key={post.id} className="notice-table-row"
+          onClick={() => openNotice(post.id)} aria-label={post.title + ' 상세보기'}>
+          <span className="notice-category">{post.category}</span>
+          <span><strong>{post.title}</strong><small>{post.description}</small></span>
+          <span>{post.date}</span>
+        </button>)}
+        {filtered.length === 0 && <EmptyState title="검색 결과가 없습니다" description="검색어 또는 분류를 변경해 보세요." />}
+      </div>
+      <div className="list-bottom"><span>총 {filtered.length}건</span></div>
+    </section>
+  </>;
+}
+
+function NoticeDetail({ notice, backToList }: { notice: NoticePost | undefined; backToList: () => void }) {
+  if (!notice) {
+    return <section className="container section-block notice-detail-missing">
+      <EmptyState title="공지사항을 찾을 수 없습니다" description="존재하지 않거나 이동된 공지사항입니다." />
+      <button type="button" className="outline-action" onClick={backToList}><ArrowRight size={15}/> 공지사항 목록</button>
+    </section>;
+  }
+  return <>
+    <PageHeading tag="NOTICE DETAIL" title="공지사항" description="모여락에서 전하는 소식입니다." />
+    <article className="container section-block notice-detail-page">
+      <button type="button" className="notice-detail-back" onClick={backToList}>
+        <ArrowRight size={16} aria-hidden="true" /> 공지사항 목록
+      </button>
+      <header className="notice-detail-header">
+        <span className="notice-detail-category">{notice.category}</span>
+        <h2>{notice.title}</h2>
+        <time dateTime={notice.publishedAt}>{notice.date}</time>
+      </header>
+      <div className="notice-detail-content">
+        <div className="notice-detail-images" aria-label="공지사항 이미지">
+          {notice.images.map((src, index) => src ?
+            <img key={index} src={src} alt={notice.title + ' 첨부 이미지 ' + (index + 1)} loading="lazy"/> :
+            <div key={index} className="notice-detail-photo-placeholder" role="img"
+              aria-label={notice.title + ' 첨부 이미지 ' + (index + 1) + ' 준비 중'}>
+              <span aria-hidden="true">▧</span>
+              <small>공지 이미지 {index + 1} 자리</small>
+            </div>)}
+        </div>
+        <div className="notice-detail-body">
+          {notice.body.split(/\n\s*\n/).map((paragraph, index) =>
+            <p key={index}>{paragraph}</p>)}
+        </div>
+      </div>
+      <div className="notice-detail-footer">
+        <button type="button" className="outline-action" onClick={backToList}>
+          <ArrowRight size={15} aria-hidden="true" /> 목록으로 돌아가기
+        </button>
+      </div>
+    </article>
   </>;
 }
 
@@ -279,6 +354,7 @@ function Profile({ user, profile, pending, error, notify, onSaved }: {user: User
 
 function App() {
   const [page,setPage] = useState<Page>(pathToPage);
+  const [activeNoticeId,setActiveNoticeId] = useState<string | null>(noticeIdFromPath);
   const [menuOpen,setMenuOpen] = useState(false);
   const [openGroup,setOpenGroup] = useState<string | null>(null);
   const [accountOpen,setAccountOpen] = useState(false);
@@ -314,11 +390,21 @@ function App() {
     });
     return()=>{live=false;unsub();};
   },[]);
-  useEffect(()=>{const onPop=()=>setPage(pathToPage());window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='home'?'모여락':allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page]);
+  useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
+  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
+  const openNotice = (id: string) => {
+    if (!findNotice(id)) return;
+    const path = '/news/' + encodeURIComponent(id);
+    if (window.location.pathname !== path) window.history.pushState(null, '', path);
+    setActiveNoticeId(id);
+    setPage('notice-detail');
+    setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);
+    window.scrollTo({top:0,behavior:'instant'});
+  };
+
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
   const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
   const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
@@ -367,9 +453,10 @@ function App() {
     </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <button type="button" className="developer-reset-action" disabled={rosterResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button>}</>}</div></nav>}
     </header>
     <main key={page}>
-      {page==='home'&&<Home navigate={navigate} notify={notify}/>}
+      {page==='home'&&<Home navigate={navigate} openNotice={openNotice}/>}
       {page==='about'&&<About navigate={navigate}/>}
-      {page==='news'&&<News notify={notify}/>}
+      {page==='news'&&<News notify={notify} openNotice={openNotice}/>}
+      {page==='notice-detail'&&<NoticeDetail notice={findNotice(activeNoticeId ?? '')} backToList={() => navigate('news')}/>}
       {page==='schedule'&&<Schedule notify={notify}/>}
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
