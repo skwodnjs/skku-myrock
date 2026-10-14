@@ -477,6 +477,9 @@ function App() {
         </nav>
       </div>
       <div className="container footer-lower">
+        <div className="footer-bottom">
+          <span>© MYROCK · 성균관대학교 중앙 밴드동아리</span>
+        </div>
         <div className="footer-contact-section">
           <div className="footer-contact-people">
             <span>회장 김서연 · 010-6350-7007</span>
@@ -485,9 +488,6 @@ function App() {
           <span className="footer-bug-report">
             <Mail size={14} aria-hidden="true" /> 오류 보고 · naa3000@naver.com
           </span>
-        </div>
-        <div className="footer-bottom">
-          <span>© MYROCK · 성균관대학교 중앙 밴드동아리</span>
         </div>
       </div>
     </footer>
