@@ -11,6 +11,8 @@ import {
   LockKeyhole, Mail, Menu, Plus, Search, ShieldCheck, Users, X, UserRound, LogOut,
 } from 'lucide-react';
 import logo from './logo-transparent.png';
+import MemberManager from './MemberManager';
+import PasswordChange from './PasswordChange';
 
 type Page = 'home' | 'about' | 'news' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
@@ -25,7 +27,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 const publicNav = navGroups.flatMap(group => group.items);
 const adminNav: NavItem[] = [{id:'members',label:'회원 관리'},{id:'handover',label:'인수인계'}];
 const allNav: NavItem[] = [...publicNav,...adminNav,{id:'profile',label:'내 정보'}];
-const isAdmin = (profile: MemberProfile | null) => Boolean(profile && profile.role !== 'member');
+const canManageMembers = (profile: MemberProfile | null) => Boolean(profile && (profile.role === 'president' || profile.superadmin));
+const canViewHandover = (profile: MemberProfile | null) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || profile.superadmin));
 const pathFor = (page: Page) => page === 'home' ? '/' : `/${page}`;
 const pathToPage = (): Page => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -149,18 +152,6 @@ function Handover({ openLogin, notify }: { openLogin: () => void; notify: Notify
   </>;
 }
 
-function Members({ openLogin, notify }: { openLogin: () => void; notify: Notify }) {
-  const [tab,setTab] = useState<'list'|'add'|'roles'>('list');
-  const [search,setSearch] = useState('');
-  return <><PageHeading tag="MEMBER MANAGEMENT" title="회원 관리" description="회원 명단, 세션, 기수와 운영진 권한을 관리합니다." />
-    <section className="container section-block"><div className="admin-notice"><ShieldCheck size={19}/><span>현재는 관리자 화면의 미리보기입니다. 실제 데이터와 권한 기능은 아직 연결되지 않았습니다.</span><button type="button" onClick={openLogin}>로그인 <ArrowUpRight size={15}/></button></div><div className="member-layout"><nav className="member-tabs" aria-label="회원 관리 기능"><button type="button" className={tab==='list'?'active':''} onClick={()=>setTab('list')}>회원 명단</button><button type="button" className={tab==='add'?'active':''} onClick={()=>setTab('add')}>신입부원 등록</button><button type="button" className={tab==='roles'?'active':''} onClick={()=>setTab('roles')}>권한 관리</button></nav><div className="member-panel">
-      {tab==='list' && <><div className="member-panel-top"><div><h2>회원 명단</h2><p>학번, 이름, 세션 등으로 회원을 검색합니다.</p></div><button type="button" className="button button-primary" onClick={()=>setTab('add')}><Plus size={16}/> 회원 등록</button></div><label className="input-search member-search"><Search size={16}/><input placeholder="학번 또는 이름 검색" aria-label="회원 검색" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="members-table-head"><span>학번</span><span>이름</span><span>기수</span><span>세션</span><span>직책</span></div><EmptyState icon={<Users size={23}/>} title="등록된 회원 정보가 표시됩니다" description="회원 데이터베이스 연결 후 실제 명단을 불러옵니다." /></>}
-      {tab==='add' && <><div className="member-panel-top"><div><h2>신입부원 등록</h2><p>회장단이 신입부원 정보를 등록할 화면입니다.</p></div><span className="preview-tag">PREVIEW</span></div><form className="member-form" onSubmit={(e: FormEvent) => { e.preventDefault(); notify(); }}><div className="form-grid"><label>학번<input placeholder="학번 입력" inputMode="numeric" required /></label><label>이름<input placeholder="이름 입력" required /></label><label>기수<input placeholder="예: 30" required /></label><label>세션<select defaultValue=""><option value="" disabled>세션 선택</option>{sessions.map(s=><option key={s}>{s}</option>)}</select></label></div><button type="submit" className="button button-primary">회원 등록 <ArrowRight size={15}/></button><p className="form-hint">회원 일괄 등록(CSV)은 추후 연결 예정입니다.</p></form></>}
-      {tab==='roles' && <><div className="member-panel-top"><div><h2>권한 관리</h2><p>운영진 교체 시 직책과 권한을 인계하는 화면입니다.</p></div><span className="preview-tag">PREVIEW</span></div><div className="roles-list">{[['일반부원','일반 회원 기능'],['파트장','게시글 작성 · 장비 대여 승인'],['실무단','동아리 소개 · 후원 및 회계 관리'],['회장단','회원 등록 · 권한 및 직책 변경']].map(([role, desc])=><div key={role}><strong>{role}</strong><span>{desc}</span><Check size={17}/></div>)}</div></>}
-    </div></div></section>
-  </>;
-}
-
 function LoginDialog({ close, notify }: { close: () => void; notify: Notify }) {
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
@@ -196,7 +187,7 @@ function LoginDialog({ close, notify }: { close: () => void; notify: Notify }) {
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="button button-primary" disabled={busy}>{busy?'로그인 중...':'로그인'} <ArrowRight size={17}/></button>
       </form>
-      <p className="login-note"><CircleHelp size={15}/> 계정 발급·비밀번호 변경은 운영진에게 문의해 주세요.</p>
+      <p className="login-note"><CircleHelp size={15}/> 계정 발급은 운영진에게 문의해 주세요. 비밀번호는 내 정보에서 변경할 수 있습니다.</p>
     </div>
   </div>;
 }
@@ -222,7 +213,7 @@ function Profile({ user, profile, pending, error, notify, onSaved }: {user: User
       notify('저장하지 못했습니다. Firestore 보안 규칙과 네트워크를 확인해 주세요.');
     } finally {setSaving(false);}
   }
-  return <><PageHeading tag="MY PROFILE" title="내 정보" description="등록된 회원 정보를 확인하고, 본인의 세션을 수정할 수 있습니다."/>
+  return <><PageHeading tag="MY PROFILE" title="내 정보" description="등록된 회원 정보를 확인하고, 세션과 비밀번호를 변경할 수 있습니다."/>
     <section className="container section-block profile-layout">
       <div className="profile-panel"><div className="profile-title"><UserRound size={20}/><h2>회원 정보</h2></div>
         <dl className="profile-data"><div><dt>이름</dt><dd>{profile.name}</dd></div><div><dt>학번</dt><dd>{profile.studentId}</dd></div><div><dt>기수</dt><dd>{profile.generation}기</dd></div><div><dt>직책</dt><dd>{profile.positions.length?profile.positions.join(', '):'일반부원'}</dd></div></dl>
@@ -232,6 +223,7 @@ function Profile({ user, profile, pending, error, notify, onSaved }: {user: User
         <div className="session-options">{sessions.map(item=><label className={selected.includes(item as Session)?'chosen':''} key={item}><input type="checkbox" checked={selected.includes(item as Session)} onChange={()=>toggle(item as Session)}/><span>{item}</span><Check size={17}/></label>)}</div>
         <button className="button button-primary profile-save" type="button" onClick={save} disabled={saving||selected.length===0||selected.join('|')===profile.sessions.join('|')}>{saving?'저장 중...':'세션 저장'} <ArrowRight size={15}/></button>
       </div>
+      <PasswordChange user={user}/>
     </section>
   </>;
 }
@@ -259,7 +251,7 @@ function App() {
           if(!snapshot.exists()) setProfileError('등록된 프로필이 없습니다. 관리자에게 문의해 주세요.');
           else {
             const data = snapshot.data();
-            setProfile({uid:current.uid,studentId:String(data.studentId??''),name:String(data.name??''),generation:String(data.generation??''),sessions:Array.isArray(data.sessions)?data.sessions:[],positions:Array.isArray(data.positions)?data.positions:[],role:data.role==='part_leader'||data.role==='staff'||data.role==='president'?data.role:'member'});
+            setProfile({uid:current.uid,studentId:String(data.studentId??''),name:String(data.name??''),generation:String(data.generation??''),sessions:Array.isArray(data.sessions)?data.sessions:[],positions:Array.isArray(data.positions)?data.positions:[],role:data.role==='part_leader'||data.role==='staff'||data.role==='president'?data.role:'member',handoverAccess:data.handoverAccess===true,superadmin:data.superadmin===true});
           }
         } catch(err){console.error(err);if(live)setProfileError('프로필 조회 권한 또는 연결을 확인해 주세요.');}
       }
@@ -275,16 +267,17 @@ function App() {
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
   const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
   const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
-  const admin=isAdmin(profile);
+  const canManage=canManageMembers(profile);
+  const canHandover=canViewHandover(profile);
   return <div className="site-root">
     <header className="site-header"><div className="container header-inner">
       <button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button>
       <nav className="desktop-nav" aria-label="주 메뉴">{navGroups.map(group=><div className="more-wrapper nav-group" key={group.label} onMouseEnter={()=>setOpenGroup(group.label)} onMouseLeave={()=>setOpenGroup(null)}><button type="button" aria-expanded={openGroup===group.label} className={group.items.some(i=>i.id===page)?'active':''} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}>{group.label} <ChevronDown size={13}/></button>{openGroup===group.label&&<div className="more-menu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}</nav>
       <div className="header-actions">
-        {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"><button className="login-button account-toggle" type="button" onClick={()=>setAccountOpen(!accountOpen)} aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{admin&&<><button type="button" onClick={()=>navigate('members')}>회원 관리</button><button type="button" onClick={()=>navigate('handover')}>인수인계</button></>}<button type="button" onClick={logout}>로그아웃</button></div>}</div>}
+        {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"><button className="login-button account-toggle" type="button" onClick={()=>setAccountOpen(!accountOpen)} aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>회원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout}>로그아웃</button></div>}</div>}
         <button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
       </div>
-    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{admin&&adminNav.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}<ArrowRight size={16}/></button>)}<button type="button" onClick={logout}>로그아웃<LogOut size={16}/></button></>}</div></nav>}
+    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>회원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout}>로그아웃<LogOut size={16}/></button></>}</div></nav>}
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} notify={notify}/>}
@@ -295,7 +288,7 @@ function App() {
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<Finance notify={notify}/>}
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
-      {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:admin?(page==='handover'?<Handover openLogin={showLogin} notify={notify}/>:<Members openLogin={showLogin} notify={notify}/>):<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="운영진 전용 페이지입니다" description="운영진 권한으로 로그인해야 접근할 수 있습니다." /></section>)}
+      {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="회원 관리" description="신입부원 등록, CSV 일괄 추가, 회원 권한과 직책 변경"/><MemberManager currentUid={user.uid}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
     </main>
     <footer className="site-footer"><div className="container footer-main"><div className="footer-brand"><span>모여락 <small>MYROCK</small></span><p>여기로, 모여락!</p></div><div className="footer-nav">{navGroups.map(group=><div key={group.label}><strong>{group.label}</strong>{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>)}<div><strong>연락</strong><span><Mail size={14}/> 운영진 연락처 등록 예정</span></div></div></div><div className="container footer-bottom"><span>© MYROCK · 성균관대학교 중앙 밴드동아리</span><span>기능 개발 중</span></div></footer>
     {loginOpen&&<LoginDialog close={()=>setLoginOpen(false)} notify={notify}/>}
