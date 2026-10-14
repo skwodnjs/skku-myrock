@@ -51,6 +51,6 @@ export default function PasswordChange({ user }: { user: User }) {
       {success && <p className="member-success" role="status">{success}</p>}
       <button type="submit" className="button button-primary" disabled={busy || !current || !next || !confirm}>{busy ? '변경 중...' : '비밀번호 변경'} <ArrowRight size={16}/></button>
     </form>
-    <p className="form-hint">현재 비밀번호를 잊었다면 회장단에게 초기화를 요청해야 합니다. 자동 이메일 재설정은 지원하지 않습니다.</p>
+    <p className="form-hint">현재 비밀번호를 잊었거나 로그인에 문제가 생기면 운영진에게 문의해 주세요. 자동 이메일 재설정은 지원하지 않습니다.</p>
   </div>;
 }
