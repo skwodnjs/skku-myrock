@@ -20,7 +20,6 @@ export type ImportResult = {
   studentId: string;
   name: string;
   status: 'created' | 'existing' | 'error';
-  initialPassword?: string;
   message?: string;
 };
 type MemberPage = { members: MemberRecord[]; nextCursor: string | null };
@@ -116,17 +115,6 @@ export function downloadExampleCsv() {
     ...exampleMemberCsvRows,
   ]);
 }
-export function downloadCredentials(results: ImportResult[]) {
-  downloadCsv('myrock-initial-credentials.csv', [
-    ['학번', '이름', '상태', '초기비밀번호', '비고'],
-    ...results.map(result => [
-      result.studentId, result.name,
-      result.status === 'created' ? '생성' : result.status === 'existing' ? '기존 계정' : '오류',
-      result.initialPassword ?? '', result.message ?? '',
-    ]),
-  ]);
-}
-
 export function callError(error: unknown): string {
   const message = (error as { message?: string })?.message;
   return message && message.length < 260 ? message : '요청을 처리하지 못했습니다. Cloudflare 설정과 연결을 확인해 주세요.';
