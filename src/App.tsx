@@ -287,7 +287,7 @@ function App() {
   async function resetRosterExceptMyself() {
     if (rosterResetting || !user || !profile?.superadmin || !hasSystemClaim) return;
     const confirmed = window.confirm(
-      '개발용 명단 초기화입니다. 본인 계정을 제외한 모든 부원의 Firestore 프로필과 Firebase 로그인 계정이 삭제됩니다.\\n\\n삭제된 계정은 자동 복구할 수 없습니다. 실행할까요?'
+      '개발용 명단 초기화입니다. 본인 계정을 제외한 모든 부원의 Firestore 프로필과 Firebase 로그인 계정이 삭제됩니다.\n\n삭제된 계정은 자동 복구할 수 없습니다. 실행할까요?'
     );
     if (!confirmed) return;
     setAccountOpen(false);
@@ -301,7 +301,7 @@ function App() {
       window.alert('명단 초기화가 완료되었습니다. 본인을 제외하고 삭제한 부원: ' + deleted + '명');
     } catch (error) {
       const message = error instanceof Error ? error.message : '알 수 없는 서버 오류';
-      window.alert('명단 초기화가 중단되었습니다.\\n' + message + '\\n\\nFirebase Auth 및 Firestore의 실제 상태를 확인한 뒤 다시 시도해 주세요.');
+      window.alert('명단 초기화가 중단되었습니다.\n' + message + '\n\nFirebase Auth 및 Firestore의 실제 상태를 확인한 뒤 다시 시도해 주세요.');
       setRosterRevision(previous => previous + 1);
     } finally {
       setRosterResetting(false);
