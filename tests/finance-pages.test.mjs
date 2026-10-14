@@ -24,7 +24,7 @@ test('finance landing introduces donations before account instructions and trans
 });
 test('account is explicitly unconfigured and never advertises an invented payable account', () => {
   assert.match(finance, /계좌 정보 등록 예정/);
-  assert.match(finance, /입금 전 운영진에게 계좌 정보를 확인해 주세요/);
+  assert.doesNotMatch(finance, /후원 계좌가 아직 등록되지 않았습니다|입금 전 운영진에게 계좌 정보를 확인해 주세요/);
   assert.ok(!/\b\d{2,4}-\d{2,6}-\d{3,9}\b/.test(finance));
 });
 test('anonymous donors are public as 익명 and their own donations are user-private after login', () => {
@@ -39,6 +39,10 @@ test('anonymous donors are public as 익명 and their own donations are user-pri
   ]) assert.ok(finance.includes(phrase), 'missing privacy copy: ' + phrase);
   assert.doesNotMatch(finance, /모두에게 공개되는 <b>전체 후원 내역<\/b>/);
   assert.doesNotMatch(finance, /실제 입금 내역을 계정과 연결하는 기능은 추후/);
+  // The two related anonymity sentences must be in one paragraph.
+  assert.match(finance, /익명<\/b>으로 표시됩니다\. 본인이 후원한 <b>모든 내역<\/b>을 익명 처리/);
+  assert.doesNotMatch(finance, /표시됩니다\.<\/p>\s*<p>본인이 후원한/);
+
   const donation = finance.slice(finance.indexOf('export function DonationHistory'), finance.indexOf('export function ExpenseHistory'));
   assert.match(donation, /loggedIn: boolean;/);
   assert.match(donation, /authPending: boolean;/);
@@ -73,4 +77,19 @@ test('three finance pages retain mobile-friendly layouts', () => {
   assert.match(styles, /@media \(max-width:\s*680px\)\s*\{[\s\S]*?\.finance-entry-grid\s*\{\s*grid-template-columns:\s*1fr/);
   assert.match(styles, /\.finance-bank-fields\s*\{/);
   assert.match(styles, /\.finance-login-gate\s*\{/);
+});
+
+test('footer contact links show president, vice president, and bug report email', () => {
+  assert.match(app, /<div className="footer-contacts">/);
+  assert.match(app, /href="tel:01063507007">회장 김서연 : 010-6350-7007<\/a>/);
+  assert.match(app, /href="tel:01076844336">부회장 신희수 : 010-7684-4336<\/a>/);
+  assert.match(app, /href="mailto:naa3000@naver.com"/);
+  assert.match(app, /오류 보고 : naa3000@naver.com/);
+  assert.doesNotMatch(app, /운영진 연락처 등록 예정/);
+});
+test('footer vertical gaps are slightly tighter and links inherit styling', () => {
+  assert.match(styles, /\.footer-nav>div\{[^}]*gap:10px\}/);
+  assert.match(styles, /\.footer-nav strong\{[^}]*margin-bottom:3px\}/);
+  assert.match(styles, /\.footer-nav button,\.footer-nav span,\.footer-nav a\{/);
+  assert.match(styles, /\.footer-nav a:hover/);
 });
