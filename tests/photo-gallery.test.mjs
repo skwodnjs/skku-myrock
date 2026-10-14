@@ -29,9 +29,10 @@ test('all requested concerts, events and daily activity albums appear in order',
     ['일상', '2026. 10. 10. 기타 클래스'],
   ]);
 });
-test('each album has exactly five empty photo slots and a stable unique key', () => {
+test('albums have stable mixed five-to-seven empty photo slots and unique keys', () => {
   assert.equal(new Set(photoAlbums.map(album => album.id)).size, 10);
-  assert.ok(photoAlbums.every(album => album.photos.length === 5));
+  assert.deepEqual(photoAlbums.map(album => album.photos.length), [5, 6, 7, 5, 7, 6, 5, 7, 6, 5]);
+  assert.deepEqual(new Set(photoAlbums.map(album => album.photos.length)), new Set([5, 6, 7]));
   assert.ok(photoAlbums.every(album => album.photos.every(src => src === null)));
   assert.deepEqual(['공연','행사','일상'].map(category => photoAlbums.filter(album => album.category === category).length), [6,2,2]);
 });
@@ -50,6 +51,13 @@ test('gallery cover opens full view with thumbnail selection, carousel navigatio
   assert.match(component, /document\.body\.style\.overflow = 'hidden'/);
   assert.match(component, /gallery-album-action[^>]*>[^\n]*전체보기/);
   assert.doesNotMatch(app.match(/function Gallery\([\s\S]*?function Equipment/)?.[0] ?? '', /\.photo-item|미리보기/);
+});
+test('long album titles stay on one line with ellipsis and aligned action text', () => {
+  assert.match(styles, /\.gallery-album-details\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto;/s);
+  assert.match(styles, /\.gallery-album-details strong\s*\{[^}]*white-space:\s*nowrap;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;/s);
+  assert.match(styles, /\.gallery-album-grid\s*\{[^}]*align-items:\s*start;/s);
+  assert.match(component, /<strong title=\{album\.title\}>\{album\.title\}<\/strong>/);
+  assert.doesNotMatch(styles, /\.gallery-album-details\s*\{\s*flex-direction:\s*column;/);
 });
 test('album placeholders and lightbox have separate styles from the old broken photo items', () => {
   assert.match(styles, /\.gallery-slot-empty\s*\{[\s\S]*?align-items:\s*center;/);
