@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
 import type { MemberRole, Session } from './firebase';
 import {
-  callError, deleteMember, downloadExampleCsv, formatMemberValues, loadAllMembers,
+  callError, deleteMember, downloadExampleCsv, formatMemberValues, loadMembers,
   parseMembersCsv, previewMembers, registerMembers, resetMemberPassword,
   saveMemberDetails, saveMemberPermissions, saveMemberSessions, splitMemberValues,
 } from './memberAdmin';
@@ -23,6 +23,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
   const canEditDetails = level !== 'part_leader';
   const [tab, setTab] = useState<Tab>('list');
   const [members, setMembers] = useState<MemberRecord[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
@@ -46,11 +47,26 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
     setLoading(true);
     setError('');
     try {
-      setMembers(await loadAllMembers());
+      const page = await loadMembers();
+      setMembers(page.members);
+      setCursor(page.nextCursor);
     } catch (err) { setError(callError(err)); }
     finally { setLoading(false); }
   }
   useEffect(() => { void refresh(); }, []);
+  
+  async function loadMore() {
+    if (!cursor || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const page = await loadMembers(cursor);
+      setMembers(previous => [...previous, ...page.members.filter(member => !previous.some(existing => existing.uid === member.uid))]);
+      setCursor(page.nextCursor);
+    } catch (err) { setError(callError(err)); }
+    finally { setLoading(false); }
+  }
+
 
   async function inspectPreview(membersToCheck: NewMember[], requestId: number) {
     setCheckingPreview(true);
@@ -172,7 +188,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
         {message && <p className="member-success member-feedback" role="status">{message}</p>}
 
         {tab === 'list' && <>
-          <div className="member-panel-top"><div><h2>부원 명단</h2><p>전체 부원을 이름 가나다순으로 표시합니다. 권한에 따라 수정 가능한 항목이 다릅니다.</p></div>
+          <div className="member-panel-top"><div><h2>부원 명단</h2><p>부원을 이름 가나다순으로 표시합니다. 한 번에 최대 100명씩 불러오며 권한에 따라 수정 가능한 항목이 다릅니다.</p></div>
             {isPresident && <button type="button" className="button button-primary" onClick={() => setTab('add')}><Plus size={16}/> 부원 등록</button>}</div>
           <div className="member-toolbar">
             <label className="input-search member-search"><Search size={16}/><input placeholder="학번, 이름, 기수, 세션 검색" aria-label="회원 검색" value={query} onChange={event => setQuery(event.target.value)}/></label>
@@ -227,9 +243,11 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
                 </div>
               </form>}
             </div>)}
-            {!loading && filtered.length === 0 && <div className="member-empty"><Users size={19}/> {members.length ? '검색 결과가 없습니다.' : '등록된 회원이 없습니다.'}</div>}
+            {!loading && filtered.length === 0 && <div className="member-empty"><Users size={19}/> {members.length ? '현재 불러온 명단에서 검색 결과가 없습니다.' : '등록된 부원이 없습니다.'}</div>}
             {loading && <div className="member-empty">회원 정보를 불러오는 중입니다...</div>}
           </div>
+          {cursor && <button type="button" className="outline-action member-loadmore" onClick={() => void loadMore()} disabled={loading}>부원 더 보기 <ArrowRight size={15}/></button>}
+          {cursor && <p className="form-hint">검색은 현재 불러온 명단에 적용됩니다. 더 많은 부원을 찾으려면 '부원 더 보기'를 눌러 주세요.</p>}
           <p className="form-hint">시스템 관리자 계정은 보호되며, 본인의 권한 변경·계정 삭제·비밀번호 초기화도 제한됩니다.</p>
         </>}
 
