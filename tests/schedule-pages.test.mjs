@@ -97,6 +97,21 @@ test('landing remains compact and shows four schedule-opening actions only', () 
   assert.match(styles, /\.schedule-list-section\s*\{\s*margin-top:\s*35px/);
 });
 
+test('landing shows three compact planned-feature notes without enabling schedule mutations', () => {
+  const landing = source.slice(source.indexOf('export function ScheduleLanding'), source.indexOf('const SLOT_MINUTES ='));
+  const guide = landing.slice(landing.indexOf('<aside className="container schedule-usage-guide"'), landing.indexOf('<section className="container section-block schedule-landing">'));
+  assert.match(landing, /<ScheduleHeading title="합주 시간 조율"[^>]*\/>\s*<aside className="container schedule-usage-guide"/);
+  assert.match(guide, /시간표 사용 안내/);
+  assert.match(guide, /아래 기능은 추후 지원 예정입니다/);
+  assert.equal((guide.match(/<li>/g) ?? []).length, 3);
+  assert.match(guide, /학번으로 다른 부원을 시간표에 초대/);
+  assert.match(guide, /운영진은 구성팀 전용 시간표를 개설/);
+  assert.match(guide, /확정되면 참여자의 다른 시간표에서 겹치는 가능 시간이 자동으로 해제/);
+  assert.doesNotMatch(guide, /onClick=|onSubmit=|onChange=/);
+  assert.match(styles, /\.schedule-usage-list\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/s);
+  assert.match(styles, /@media \(max-width:\s*820px\)\s*\{[\s\S]*?\.schedule-usage-list\s*\{\s*grid-template-columns:\s*1fr;/);
+});
+
 test('existing management-role gating and unimplemented creation buttons are preserved', () => {
   assert.match(source, /\{canCreateTeam && <button/);
   assert.match(app, /canCreateTeam=\{Boolean\(user && !authPending && currentLevel\)\}/);
