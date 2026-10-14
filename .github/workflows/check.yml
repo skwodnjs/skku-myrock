@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - feature/cloudflare-pages-migration-20261014
+      - 'feature/**'
   pull_request:
 
 jobs:
