@@ -1008,3 +1008,61 @@
   .finance-login-gate > div { flex: 1 1 calc(100% - 44px); }
   .finance-login-gate .button { margin-left: 38px; }
 }
+
+
+/* Footer: separate site navigation from officer contacts below a divider. */
+.site-footer .footer-main {
+  padding-top: 48px;
+  padding-bottom: 36px;
+}
+.site-footer .footer-contact-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 11px;
+  padding-top: 19px;
+  padding-bottom: 0;
+  border-top: 1px solid var(--border);
+}
+.footer-contact-people {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 28px;
+  row-gap: 9px;
+}
+.footer-contact-people a,
+.footer-bug-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #758780;
+  text-decoration: none;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.footer-bug-report svg { flex: 0 0 auto; }
+.footer-contact-people a:hover,
+.footer-bug-report:hover { color: var(--accent-dark); }
+.footer-contact-people a:focus-visible,
+.footer-bug-report:focus-visible {
+  outline: 2px solid var(--accent-dark);
+  outline-offset: 3px;
+}
+.site-footer .footer-bottom {
+  border-top: 0;
+  min-height: 0;
+  padding-top: 20px;
+  padding-bottom: 25px;
+  justify-content: flex-start;
+}
+@media (max-width: 820px) {
+  .site-footer .footer-main { padding-top: 42px; padding-bottom: 32px; }
+}
+@media (max-width: 620px) {
+  .site-footer .footer-main { padding-top: 36px; padding-bottom: 27px; }
+  .site-footer .footer-contact-section { padding-top: 17px; gap: 10px; }
+  .footer-contact-people { flex-direction: column; align-items: flex-start; row-gap: 8px; }
+  .site-footer .footer-bottom { padding-top: 18px; padding-bottom: 23px; }
+}
