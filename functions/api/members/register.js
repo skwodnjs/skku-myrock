@@ -1,10 +1,6 @@
-import { AUTH_ROOT, FIRESTORE_ROOT, failure, parseBody, reject, secureOrigin, success, toFields, validateMembers } from '../../_lib/shared.js';
+import { AUTH_ROOT, FIRESTORE_ROOT, failure, initialPasswordForStudentId, parseBody, secureOrigin, success, toFields, validateMembers } from '../../_lib/shared.js';
 import { assertAdmin, createAccount, deleteAccount, getFirestoreDocument, googleRequest, lookupAccount } from '../../_lib/google.js';
 
-function initialPassword() {
-  const random = crypto.getRandomValues(new Uint8Array(24));
-  return Array.from(random, value => value.toString(16).padStart(2, '0')).join('');
-}
 const emailFor = studentId => studentId + '@members.skku-myrock.firebaseapp.com';
 
 export async function onRequestPost({ request, env }) {
@@ -26,7 +22,7 @@ export async function onRequestPost({ request, env }) {
           });
           continue;
         }
-        const password = initialPassword();
+        const password = initialPasswordForStudentId(member.studentId);
         const created = await createAccount(env, email, member.name, password);
         if (created.exists) {
           results.push({ studentId: member.studentId, name: member.name, status: 'existing', message: '이미 등록된 학번입니다.' });
@@ -53,7 +49,7 @@ export async function onRequestPost({ request, env }) {
         }
         results.push({
           studentId: member.studentId, name: member.name,
-          status: 'created', initialPassword: password,
+          status: 'created',
         });
       } catch (error) {
         console.error('회원 등록 중 서버 오류', member.studentId, error);
