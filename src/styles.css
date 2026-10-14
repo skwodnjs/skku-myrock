@@ -827,14 +827,6 @@
   letter-spacing: .07em;
   color: var(--accent-dark);
 }
-.finance-bank-pending {
-  color: #70857b;
-  border: 1px solid #e0eae4;
-  background: #f5f8f6;
-  padding: 7px 11px;
-  font-size: 11px;
-  white-space: nowrap;
-}
 .finance-bank-fields {
   display: grid;
   grid-template-columns: 1fr 1.45fr 1fr;
@@ -859,7 +851,7 @@
   gap: 14px;
   align-items: flex-start;
   padding: 22px 22px 18px;
-  margin-top: 18px;
+  margin-top: 24px;
   background: #f6f8f7;
   border-left: 3px solid #7ba699;
 }
