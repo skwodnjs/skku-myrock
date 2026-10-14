@@ -49,24 +49,6 @@ export async function loadMembers(cursor: string | null = null) {
   return api<MemberPage>('list' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
 }
 
-// Fetch every page before sorting so "가나다순" applies to the entire roster.
-export async function loadAllMembers(): Promise<MemberRecord[]> {
-  const records: MemberRecord[] = [];
-  const cursors = new Set<string>();
-  let cursor: string | null = null;
-  for (let pageNo = 0; pageNo < 60; pageNo++) {
-    const page = await loadMembers(cursor);
-    records.push(...page.members);
-    if (!page.nextCursor) {
-      return records.sort((a, b) =>
-        a.name.localeCompare(b.name, 'ko') || a.studentId.localeCompare(b.studentId, 'ko'));
-    }
-    if (cursors.has(page.nextCursor)) throw new Error('부원 명단 페이지 기준이 중복되었습니다.');
-    cursors.add(page.nextCursor);
-    cursor = page.nextCursor;
-  }
-  throw new Error('부원 명단이 너무 많습니다. 관리 서버의 페이지 한도를 확인해 주세요.');
-}
 export type PreviewResult = { studentId: string; status: 'new' | 'existing' };
 export async function previewMembers(members: NewMember[]): Promise<PreviewResult[]> {
   const found: PreviewResult[] = [];
