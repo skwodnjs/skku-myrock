@@ -75,7 +75,7 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
       const suffix = url.pathname.slice(slash+'/users'.length);
       if (suffix==='') {
         assert.equal(url.searchParams.get('orderBy'),'name asc, __name__ asc');
-        assert.equal(url.searchParams.get('pageSize'),'100');
+        assert.equal(url.searchParams.get('pageSize'),'30');
         return response({documents:[...docs.values()],nextPageToken:null});
       }
       const selected = decodeURIComponent(suffix.slice(1));
