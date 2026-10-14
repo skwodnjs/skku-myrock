@@ -21,7 +21,7 @@ Cloudflare Dashboard → **Workers & Pages → Pages → Connect to Git**에서 
 | Build output directory | `dist` |
 | Node.js | 22 이상 |
 
-이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/sessions`, `/api/members/details`, `/api/members/preview`, `/api/members/register`, `/api/members/permissions`, `/api/members/reset-password`, `/api/members/delete` API를 배포합니다.
+이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/sessions`, `/api/members/details`, `/api/members/preview`, `/api/members/register`, `/api/members/permissions`, `/api/members/reset-password`, `/api/members/delete`, `/api/members/purge` API를 배포합니다.
 
 `public/_routes.json`은 Vite가 `dist/_routes.json`으로 복사합니다. **`/api/*`만 Pages Functions 요청으로 집계**하고 HTML/CSS/JS/정적 이미지 요청은 Pages 정적 자산으로 제공하도록 지정합니다.
 
@@ -92,7 +92,7 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 - **신규 생성 계정**은 초기 비밀번호가 **본인 학번(10자리)**입니다. 초기 비밀번호 CSV 파일을 따로 내려받을 필요는 없습니다. 기존 계정의 비밀번호는 변경하지 않습니다. 로그인 문제가 생기면 운영진에게 연락하도록 안내합니다. 비밀번호는 로그인 후 **내 정보 → 비밀번호 변경**에서 본인이 변경할 수 있습니다.
 - 계정 생성과 Firestore 프로필 생성은 별도 Google 서비스 작업이므로 일부 실패가 가능하며, 서버는 신규 계정 롤백을 시도합니다.
 
-부원 관리에서 **파트장·실무단에게는 부원 명단 탭만**, **회장단에게는 부원 명단 및 신입부원 등록 탭**을 표시합니다. 부원 명단은 Firestore의 `name asc, __name__ asc` 정렬 인덱스를 사용해 **첫 100명만 먼저 조회**하고, `부원 더 보기`를 눌러 다음 100명을 가져옵니다. 기존처럼 모든 명단을 먼저 다운로드하지 않습니다. 한국어 완성형 이름은 일반적인 가나다순으로 표시되지만, Firestore 문자열 순서는 언어별 사전식 정렬과 일부 다를 수 있습니다. 검색은 현재 로드된 명단에만 적용됩니다. 수정 기능은 부원 행 아래에 바로 표시되며 별도 권한 관리 탭은 없습니다.
+부원 관리에서 **파트장·실무단에게는 부원 명단 탭만**, **회장단에게는 부원 명단 및 신입부원 등록 탭**을 표시합니다. 부원 명단은 Firestore의 `name asc, __name__ asc` 정렬 인덱스를 사용해 **처음 30명만 조회**하고, 하단으로 스크롤하면 `IntersectionObserver`가 다음 30명을 자동으로 불러옵니다. 전체 이름순으로 정렬된 결과를 페이지별로 받아 한 화면에 이어 붙입니다. 스크롤 중 목록 요청에 실패하면 자동 재시도를 멈추고 사용자에게 재시도 버튼을 제공합니다. 한국어 완성형 이름은 일반적인 가나다순으로 표시되지만 Firestore 문자열 정렬은 완전한 한국어 사전 정렬과 일부 다를 수 있습니다. **검색은 아직 불러온 명단에만 적용됩니다.** 수정 기능은 부원 행 아래에 바로 표시되며 별도 권한 관리 탭은 없습니다.
 
 ## 5. 부원 관리 권한
 
@@ -130,6 +130,25 @@ Firebase 로그인 토큰 서명·대상 프로젝트·만료 시간 및 Firesto
 세션 수정·자기 비밀번호 변경은 기존 Firebase SDK에서 진행합니다. 신규 회원에게 학번과 동일한 초기 비밀번호를 지정하는 방식은 추측 가능하므로, 계정에 문제가 있다면 운영진에게 문의하고 필요한 경우 본인이 변경하는 것을 권장합니다. 자동 최초 로그인 변경은 강제하지 않습니다. 현재 이메일은 실제 수신함이 아닌 `학번@members.skku-myrock.firebaseapp.com` 주소로, 이메일 재설정은 지원하지 않습니다.
 
 Firestore 보안 규칙 `firestore.rules`는 자기 프로필만 읽고 세션만 직접 수정하도록 제한합니다. 운영진 작업은 보안 규칙을 우회할 수 있는 서비스 계정으로 수행하므로 **Cloudflare Functions 내부에서 관리자 권한을 반드시 확인합니다.**
+
+### 개발용 최고관리자 명단 초기화
+
+Firebase ID 토큰의 `superadmin: true` **서명된 사용자 지정 클레임과** 해당 사용자의 Firestore `superadmin: true` 필드가 **모두 확인되는 계정에만** 계정 드롭다운의 **로그아웃 바로 아래 빨간색 '명단 초기화'**가 표시됩니다. 보통 회장단이나 OB 운영진 계정에는 보이지 않습니다. 휴대폰 메뉴에서도 같은 조건으로 표시합니다.
+
+- 버튼 클릭 뒤 브라우저 확인창에서 **확인**을 누른 경우에만 실행됩니다.
+- 서버는 이 두 최고관리자 조건을 독립적으로 재검증하며, 프런트엔드가 삭제 대상 UID를 전달할 수 없습니다.
+- 본인의 Firestore `users/{uid}`와 Firebase Authentication 계정은 보존하고 **다른 부원의 프로필 및 연동된 Auth 계정**을 최대 **5명씩** 처리합니다. 삭제 결과를 표시하고 중간 실패가 발생하면 중단합니다. 다시 실행할 경우 남은 명단부터 진행합니다.
+- 다른 `superadmin: true` 프로필이 발견되는 경우 보호를 위해 작업을 중단합니다.
+- Firebase Auth 계정 없이 프로필만 남은 경우에는 해당 프로필을 정리합니다. **프로필 없이 Firebase Auth에만 존재하는 계정은 이 기능에서 검색/삭제하지 않습니다.**
+- 이 기능은 Cloudflare의 무료 실행/외부 요청 한도를 고려한 개발용 관리 도구입니다. **실제 부원 명단이 만들어지기 전에 제거하거나 접근 정책을 재검토하세요.**
+- Firestore 문서 삭제는 **하위 컬렉션을 재귀적으로 제거하지 않습니다.** 현재 구현에서 별도의 하위 컬렉션 생성 기능은 없지만, 수동으로 만든 하위 컬렉션이나 앞으로 추가하는 When2meet·게시물·장비 대여 기록은 이 명단 초기화로 삭제되지 않을 수 있습니다.
+
+### 수동 명단 초기화 후 점검
+
+1. Firebase Console → **Authentication → Users**에서 보존할 최고관리자 외에 이전에 발급한 부원 계정이 남았는지 확인합니다.
+2. Firestore → **Data → users**에서 보존할 최고관리자 외 문서가 남았는지 확인합니다. 문서 아래 하위 컬렉션을 직접 생성했던 경우 개별 확인이 필요합니다.
+3. 테스트 중 다른 Firestore 컬렉션, Cloud Storage 업로드 파일, 외부 서비스 데이터 등을 생성한 경우 해당 데이터는 각각 별도로 확인합니다.
+4. `FIREBASE_SERVICE_ACCOUNT` 서비스 계정 키와 최고관리자의 Firebase 사용자 지정 클레임은 삭제할 필요가 없습니다. 명단 초기화는 Firebase 프로젝트 자체를 삭제하는 작업이 아닙니다.
 
 ## 6. 개발 / 로컬 테스트
 
