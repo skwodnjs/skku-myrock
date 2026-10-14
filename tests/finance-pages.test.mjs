@@ -30,12 +30,15 @@ test('account is explicitly unconfigured and never advertises an invented payabl
 test('anonymous donors are public as 익명 and their own donations are user-private after login', () => {
   for (const phrase of [
     '홍길동(비공개)',
-    '운영진에게 비공개를 요청',
+    '해당 후원 건의 익명 처리를 요청',
     '전체 후원 내역',
     '이름 대신 <b>익명</b>',
-    '내 후원 내역',
-    '후원 사실을 확인',
+    '모든 내역</b>을 익명 처리',
+    '익명 처리 여부와 관계없이',
+    '로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다',
   ]) assert.ok(finance.includes(phrase), 'missing privacy copy: ' + phrase);
+  assert.doesNotMatch(finance, /모두에게 공개되는 <b>전체 후원 내역<\/b>/);
+  assert.doesNotMatch(finance, /실제 입금 내역을 계정과 연결하는 기능은 추후/);
   const donation = finance.slice(finance.indexOf('export function DonationHistory'), finance.indexOf('export function ExpenseHistory'));
   assert.match(donation, /loggedIn: boolean;/);
   assert.match(donation, /authPending: boolean;/);
