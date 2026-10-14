@@ -26,6 +26,8 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   const [message, setMessage] = useState('');
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState<NewMember[]>([]);
+  const [csvStep, setCsvStep] = useState<'choose' | 'review' | 'complete'>('choose');
+  const [progressDone, setProgressDone] = useState(0);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [individual, setIndividual] = useState<NewMember>(blankMember);
   const [individualPositionsText, setIndividualPositionsText] = useState('');
@@ -59,27 +61,29 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   async function selectCsv(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    setResults([]); setPreview([]); setError(''); setMessage('');
+    setResults([]); setPreview([]); setCsvStep('choose'); setProgressDone(0); setError(''); setMessage('');
     if (!file) return;
     if (file.size > 500_000) { setError('CSV 파일은 500KB 이하여야 합니다.'); return; }
     try {
       const parsed = parseMembersCsv(await file.text());
       setFileName(file.name);
       setPreview(parsed);
-      setMessage(`${parsed.length}명의 회원을 읽었습니다. 내용을 확인한 뒤 등록해 주세요.`);
+      setCsvStep('review');
+      setMessage(`CSV에서 ${parsed.length}명의 등록 예정 회원을 읽었습니다. 이름·학번·기수·세션을 확인한 뒤 확정해 주세요.`);
     } catch (err) { setFileName(''); setError(err instanceof Error ? err.message : '파일을 읽지 못했습니다.'); }
   }
 
-  async function submit(membersToCreate: NewMember[]) {
+  async function submit(membersToCreate: NewMember[], fromCsv = false) {
     if (busy) return;
-    setBusy(true); setError(''); setMessage(''); setResults([]);
+    setBusy(true); setError(''); setMessage(''); setResults([]); setProgressDone(0);
     try {
-      const incoming = await registerMembers(membersToCreate);
+      const incoming = await registerMembers(membersToCreate, done => setProgressDone(done));
       setResults(incoming);
       const created = incoming.filter(item => item.status === 'created').length;
       const skipped = incoming.filter(item => item.status === 'existing').length;
       const failed = incoming.filter(item => item.status === 'error').length;
-      setMessage(`등록 결과: 신규 ${created}명, 기존 계정 ${skipped}명, 실패 ${failed}명. 신규 회원의 초기 비밀번호 파일을 반드시 저장해 주세요.`);
+      setMessage(`등록 결과: 신규 ${created}명, 기존 계정 ${skipped}명, 실패 ${failed}명.${created ? ' 신규 회원의 초기 비밀번호 CSV를 반드시 저장해 주세요.' : ''}`);
+      if (fromCsv) setCsvStep('complete');
       await refresh();
     } catch (err) { setError(callError(err)); }
     finally { setBusy(false); }
@@ -116,7 +120,7 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   const hasPasswords = results.some(item => item.status === 'created');
 
   return <section className="container section-block">
-    <div className="admin-notice"><ShieldCheck size={19}/><span>회원 등록과 권한 변경은 Firebase 서버에서 로그인 및 회장단 권한을 검증한 뒤 처리합니다. 기수로 권한이 자동 변경되지는 않습니다.</span></div>
+    <div className="admin-notice"><ShieldCheck size={19}/><span>회원 등록과 권한 변경은 Cloudflare Pages 서버에서 Firebase 로그인과 회장단 권한을 검증한 뒤 처리합니다. 기수로 권한이 자동 변경되지는 않습니다.</span></div>
     <div className="member-layout">
       <nav className="member-tabs" aria-label="회원 관리 기능">
         <button type="button" className={tab === 'list' ? 'active' : ''} onClick={() => setTab('list')}>회원 명단</button>
@@ -154,20 +158,48 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
           <div className="member-registration">
             <div className="member-upload">
               <div className="member-upload-title"><FileSpreadsheet size={22}/><div><strong>CSV 일괄 등록</strong><p>UTF-8 CSV · 1회 최대 60명 · 헤더: 학번, 이름, 기수, 세션, 직책(선택)</p></div></div>
-              <div className="member-upload-actions">
-                <label className="button button-primary member-file-picker"><Upload size={15}/> CSV 파일 선택<input type="file" accept=".csv,text/csv" onChange={event => void selectCsv(event)} /></label>
-                <button type="button" className="outline-action" onClick={downloadExampleCsv}><Download size={15}/> 양식 내려받기</button>
+              <div className="member-steps" aria-label="CSV 등록 절차">
+                {([['choose','1. CSV 추가'],['review','2. 명단 확인'],['complete','3. 등록 완료']] as const).map(([step,label]) =>
+                  <span key={step} className={csvStep === step ? 'active' : ''} aria-current={csvStep === step ? 'step' : undefined}>{label}</span>)}
               </div>
-              {fileName && <p className="form-hint">선택한 파일: {fileName}</p>}
-              {preview.length > 0 && <div className="member-preview">
-                <h3>등록 전 확인 · {preview.length}명</h3>
-                <div className="member-preview-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>기수</th><th>세션</th><th>직책</th></tr></thead>
-                  <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{member.sessions.join(', ')}</td><td>{member.positions.join(', ') || '—'}</td></tr>)}</tbody>
-                </table></div>
-                <button type="button" className="button button-primary" disabled={busy} onClick={() => void submit(preview)}>{busy ? '등록 중...' : `${preview.length}명 등록`} <ArrowRight size={15}/></button>
+              {csvStep === 'choose' && <>
+                <p className="profile-help">회원 CSV를 선택하면 바로 계정을 만들지 않고, 등록 예정 인원과 전체 내용을 먼저 보여줍니다.</p>
+                <div className="member-upload-actions">
+                  <label className="button button-primary member-file-picker"><Upload size={15}/> CSV 파일 선택<input type="file" accept=".csv,text/csv" onChange={event => void selectCsv(event)} /></label>
+                  <button type="button" className="outline-action" onClick={downloadExampleCsv}><Download size={15}/> 양식 내려받기</button>
+                </div>
+              </>}
+              {csvStep === 'review' && <>
+                <div className="member-preview">
+                  <h3>등록 예정 명단 · 총 {preview.length}명</h3>
+                  <p className="form-hint">파일: {fileName} · 아래 회원을 모두 확인해 주세요. 이미 가입한 학번은 덮어쓰지 않고 건너뜁니다.</p>
+                  <div className="member-preview-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>기수</th><th>세션</th><th>직책</th></tr></thead>
+                    <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{member.sessions.join(', ')}</td><td>{member.positions.join(', ') || '—'}</td></tr>)}</tbody>
+                  </table></div>
+                  {busy && <p className="member-progress" role="status">계정 등록 진행 중: {progressDone} / {preview.length}명 처리 완료</p>}
+                  <div className="member-upload-actions">
+                    <button type="button" className="outline-action" disabled={busy} onClick={() => {setCsvStep('choose');setPreview([]);setFileName('');setMessage('');}}>다른 파일 선택</button>
+                    <button type="button" className="button button-primary" disabled={busy || preview.length === 0} onClick={() => void submit(preview,true)}>{busy ? '등록 처리 중...' : `확인한 ${preview.length}명 등록 실행`} <ArrowRight size={15}/></button>
+                  </div>
+                  <p className="form-hint">이 버튼을 누를 때 실제 계정이 생성됩니다. 기존 계정의 비밀번호와 권한은 변경되지 않습니다.</p>
+                </div>
+              </>}
+              {csvStep === 'complete' && <div className="member-result">
+                <h3>CSV 등록 완료 · 총 {results.length}명 처리</h3>
+                <div className="member-result-counts">
+                  <span>신규 생성: {results.filter(entry => entry.status === 'created').length}명</span>
+                  <span>기존 계정: {results.filter(entry => entry.status === 'existing').length}명</span>
+                  <span>실패·확인 필요: {results.filter(entry => entry.status === 'error').length}명</span>
+                </div>
+                <p>새로 생성된 계정의 임시 비밀번호는 이 화면을 벗어나면 다시 표시할 수 없습니다. 반드시 CSV를 내려받아 안전하게 보관한 뒤 개별 전달해 주세요.</p>
+                <div className="member-result-list">{results.map((entry, i) => <div key={i}><span>{entry.name} · {entry.studentId}{entry.message ? ' — ' + entry.message : ''}</span><strong>{entry.status === 'created' ? '신규 생성' : entry.status === 'existing' ? '기존 계정' : '확인 필요'}</strong></div>)}</div>
+                <div className="member-upload-actions">
+                  {hasPasswords && <button type="button" className="button button-primary" onClick={() => downloadCredentials(results)}><Download size={15}/> 초기 비밀번호 CSV 내려받기</button>}
+                  <button type="button" className="outline-action" onClick={() => {if (hasPasswords && !window.confirm('초기 비밀번호 CSV를 저장했나요? 이 화면을 떠나면 비밀번호를 다시 확인할 수 없습니다.')) return; setCsvStep('choose');setPreview([]);setResults([]);setFileName('');setMessage('');}}>다른 명단 등록</button>
+                </div>
               </div>}
             </div>
-            <div className="member-single"><h3>한 명씩 등록</h3>
+            {csvStep === 'choose' && <div className="member-single"><h3>한 명씩 등록</h3>
               <form onSubmit={event => { event.preventDefault(); void submit([{...individual, positions: individualPositionsText.split('|').map(p => p.trim()).filter(Boolean)}]); }} className="member-form">
                 <div className="form-grid">
                   <label>학번<input inputMode="numeric" maxLength={10} value={individual.studentId} placeholder="학번 10자리" onChange={event => setIndividual(previous => ({...previous, studentId: event.target.value.replace(/\D/g, '')}))} required /></label>
@@ -178,14 +210,13 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
                 <div className="member-session-editor"><strong>세션</strong><div>{sessionList.map(session => <label key={session}><input type="checkbox" checked={individual.sessions.includes(session)} onChange={() => setIndividual(previous => ({...previous, sessions: previous.sessions.includes(session) ? previous.sessions.filter(item => item !== session) : [...previous.sessions, session]}))}/>{session}</label>)}</div></div>
                 <button type="submit" className="button button-primary" disabled={busy || individual.studentId.length !== 10 || individual.sessions.length === 0}>{busy ? '등록 중...' : '회원 등록'} <ArrowRight size={15}/></button>
               </form>
-            </div>
+              {results.length > 0 && <div className="member-result">
+                <h3>개별 등록 결과</h3>
+                {results.map((entry,i) => <p key={i}>{entry.name} · {entry.studentId}: {entry.status === 'created' ? '신규 생성' : entry.status === 'existing' ? '기존 계정' : '확인 필요'}{entry.message ? ' — ' + entry.message : ''}</p>)}
+                {hasPasswords && <button type="button" className="button button-primary" onClick={() => downloadCredentials(results)}><Download size={15}/> 초기 비밀번호 CSV 내려받기</button>}
+              </div>}
+            </div>}
           </div>
-          {results.length > 0 && <div className="member-result">
-            <h3>등록 결과</h3>
-            <p>새로 생성된 계정의 임시 비밀번호는 이 화면을 벗어나면 다시 표시할 수 없습니다. 즉시 내려받아 각 회원에게 개별 전달해 주세요.</p>
-            <div className="member-result-list">{results.map((entry, i) => <div key={i}><span>{entry.name} · {entry.studentId}</span><strong>{entry.status === 'created' ? '생성됨' : entry.status === 'existing' ? '기존 계정' : '실패'}</strong></div>)}</div>
-            {hasPasswords && <button type="button" className="button button-primary" onClick={() => downloadCredentials(results)}><Download size={15}/> 임시 비밀번호 CSV 내려받기</button>}
-          </div>}
         </>}
 
         {tab === 'roles' && <>
