@@ -9,6 +9,7 @@ import { onRequestPost as permissions } from '../functions/api/members/permissio
 import { onRequestPost as resetPassword } from '../functions/api/members/reset-password.js';
 import { onRequestPost as deleteMember } from '../functions/api/members/delete.js';
 import { onRequestPost as register } from '../functions/api/members/register.js';
+import { onRequestPost as purge, RESET_CONFIRMATION } from '../functions/api/members/purge.js';
 
 test('signed tokens enforce role hierarchy through real handlers and Auth/Firestore stay in sync', async () => {
   const crypto = globalThis.crypto ?? webcrypto;
@@ -31,6 +32,7 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
     staff: {uid:'staffLeader12345',role:'staff'},
     president: {uid:'presidentLeader123',role:'president'},
     ob: {uid:'obFormerLeader123',role:'member',handoverAccess:true},
+    super: {uid:'developerSuperadmin1',role:'president',superadmin:true},
   };
   for(const [name, actor] of Object.entries(actors)) {
     const header = url64({alg:'RS256',kid:'test-firebase-key'});
@@ -38,6 +40,7 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
     const payload = url64({
       aud:'skku-myrock',iss:'https://securetoken.google.com/skku-myrock',
       sub:actor.uid,iat:now,exp:now+3600,auth_time:now-20,
+      ...(actor.superadmin ? { superadmin: true } : {}),
     });
     const unsigned = header+'.'+payload;
     const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5',keys.privateKey,new TextEncoder().encode(unsigned));
@@ -53,6 +56,7 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
   for(const actor of Object.values(actors))add(actor.uid,{
     studentId:'2026123456',name:'운영진',generation:'29',
     sessions:['기타'],positions:[],role:actor.role,handoverAccess:actor.handoverAccess===true,
+    ...(actor.superadmin ? {superadmin: true} : {}),
   });
   const uid = 'testMember12345';
   add(uid,{
