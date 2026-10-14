@@ -21,7 +21,7 @@ Cloudflare Dashboard → **Workers & Pages → Pages → Connect to Git**에서 
 | Build output directory | `dist` |
 | Node.js | 22 이상 |
 
-이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/register`, `/api/members/permissions` API를 자동으로 배포합니다.
+이 저장소의 루트 `functions/api/members/`는 **Cloudflare Pages Functions**입니다. Git 통합 배포 시 Pages가 이 경로를 인식해 `/api/members/list`, `/api/members/preview`, `/api/members/register`, `/api/members/permissions` API를 자동으로 배포합니다.
 
 `public/_routes.json`은 Vite가 `dist/_routes.json`으로 복사합니다. **`/api/*`만 Pages Functions 요청으로 집계**하고 HTML/CSS/JS/정적 이미지 요청은 Pages 정적 자산으로 제공하도록 지정합니다.
 
@@ -62,7 +62,7 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 로그인한 회장단이 **회원 관리 → 신입부원 등록**에서 다음 3단계를 수행합니다.
 
 1. **CSV 추가:** 양식을 받거나 UTF-8 CSV 파일 선택 (한 번에 최대 60명).
-2. **추가될 명단 확인:** 서버에 쓰기 전 **전체 인원·학번·이름·기수·세션·직책을 표로 확인**. 다른 파일로 바꿀 수 있음.
+2. **추가될 명단 확인:** 실제 생성에 앞서 Firebase에서 기존 학번 존재 여부를 조회하고 **신규 등록 예상 인원·기존 계정 수·학번·이름·기수·세션·직책 전체를 표로 확인**. 이 단계에서는 어떠한 회원도 생성하지 않음. 다른 파일로 바꿀 수 있음.
 3. **등록 실행 → 등록 완료:** 웹이 5명 단위로 처리한 진행 상황을 보여주고, **신규 생성/기존 계정/실패** 인원을 구분. 신규 회원의 초기 비밀번호를 CSV로 다운로드.
 
 양식 예시:
@@ -75,7 +75,7 @@ Firebase Console → Authentication → Settings → **Authorized domains**에 *
 
 영문 헤더 `studentId,name,generation,sessions,positions`도 지원합니다. 세션 복수 입력은 `|`로 구분합니다.
 
-- **실제 회원 생성은 2단계에서 관리자 확인을 누른 뒤에만 진행됩니다.**
+- **실제 회원 생성은 2단계에서 관리자가 등록 실행을 누른 뒤에만 진행됩니다.** 신규/기존 계정 수는 파일을 확인한 시점의 예상치이며, 동시에 다른 관리자가 등록하면 실제 결과가 달라질 수 있습니다.
 - 새 계정은 언제나 `role: member`, `handoverAccess: false`. `generation`과 `positions`는 표시용 데이터입니다.
 - 기존 학번이 이미 있으면 계정·프로필·비밀번호·권한을 수정하지 않고 건너뜁니다.
 - 통신 장애 시 결과를 확인할 수 없는 계정이 존재할 수 있으므로 **무작정 같은 명단을 재시도하지 말고 회원 명단과 관리자 로그를 확인**하세요.
