@@ -121,6 +121,32 @@ export async function deleteMember(member: MemberRecord) {
   });
 }
 
+const RESET_CONFIRMATION = 'CONFIRM_RESET_ALL_MEMBERS_EXCEPT_MYSELF';
+
+/**
+ * Only the designated developer superadmin can call the destructive endpoint.
+ * The Cloudflare backend checks the Firebase signed claim AND Firestore flag.
+ * Each call removes at most five accounts to stay within the free Workers budget.
+ */
+export async function purgeAllOtherMembers(onProgress: (deleted: number) => void): Promise<number> {
+  let totalDeleted = 0;
+  for (let requestNumber = 0; requestNumber < 300; requestNumber++) {
+    const data = await api<{ deleted: number; done: boolean; error?: string }>('purge', {
+      confirmation: RESET_CONFIRMATION,
+    });
+    if (!Number.isInteger(data.deleted) || data.deleted < 0 || data.deleted > 5 ||
+        typeof data.done !== 'boolean') {
+      throw new Error('명단 초기화 결과 형식이 올바르지 않습니다.');
+    }
+    totalDeleted += data.deleted;
+    onProgress(totalDeleted);
+    if (data.error) throw new Error(data.error + ' 현재까지 삭제 확인: ' + totalDeleted + '명');
+    if (data.done) return totalDeleted;
+    if (data.deleted === 0) throw new Error('진행되지 않는 초기화 요청을 감지해 중단했습니다. 관리자 로그를 확인해 주세요.');
+  }
+  throw new Error('명단이 많아 자동 초기화를 중단했습니다. 완료된 작업은 유지되므로 명단을 확인한 뒤 다시 실행해 주세요.');
+}
+
 function downloadCsv(filename: string, rows: unknown[][]) {
   const contents = serializeMembersCsv(rows);
   const url = URL.createObjectURL(new Blob([contents], { type: 'text/csv;charset=utf-8' }));
