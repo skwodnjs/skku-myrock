@@ -319,7 +319,7 @@ function App() {
         {!user?<button type="button" className="login-button" onClick={showLogin}>로그인</button>:<div className="more-wrapper account-wrapper"
           onMouseEnter={() => { if (window.matchMedia('(hover: hover)').matches) { setAccountOpen(true); setOpenGroup(null); } }}
           onMouseLeave={() => setAccountOpen(false)}
-          onFocus={() => setAccountOpen(true)}
+          onFocus={() => { if (window.matchMedia('(hover: hover)').matches) setAccountOpen(true); }}
           onBlur={event => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setAccountOpen(false); }}
         ><button className="login-button account-toggle" type="button"
           onClick={() => { if (!window.matchMedia('(hover: hover)').matches) setAccountOpen(previous => !previous); }}
