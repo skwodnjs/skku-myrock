@@ -1,10 +1,10 @@
-name: Check website and functions
+name: Check Cloudflare Pages website and admin API
 
 on:
   push:
     branches:
       - main
-      - feature/secure-member-management-20261014
+      - feature/cloudflare-pages-migration-20261014
   pull_request:
 
 jobs:
@@ -15,11 +15,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install website dependencies
+      - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build website
         run: npm run build
-      - name: Install Functions dependencies
-        run: npm --prefix functions install --no-audit --no-fund
-      - name: Check Functions syntax
-        run: npm --prefix functions run check
+      - name: Test Pages API
+        run: npm run check:api
+      - name: Compile Cloudflare Pages Functions
+        run: npm run check:pages
