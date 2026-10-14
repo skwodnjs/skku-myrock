@@ -79,25 +79,25 @@ test('three finance pages retain mobile-friendly layouts', () => {
   assert.match(styles, /\.finance-login-gate\s*\{/);
 });
 
-test('footer uses plain contact text in a distinct right-hand grid column', () => {
+test('footer copyright and nonclickable contacts share the same lower area', () => {
   const footer = app.slice(app.indexOf('<footer className="site-footer">'));
   const navStart = footer.indexOf('<nav className="footer-nav"');
   const navEnd = footer.indexOf('</nav>');
   const lower = footer.indexOf('<div className="container footer-lower">');
-  const contacts = footer.indexOf('<div className="footer-contact-section">');
   const copyright = footer.indexOf('<div className="footer-bottom">');
-  assert.ok(navStart >= 0 && navEnd > navStart && lower > navEnd && contacts > lower && copyright > contacts);
-  assert.match(footer, /aria-label="푸터 사이트 메뉴"/);
+  const contacts = footer.indexOf('<div className="footer-contact-section">');
+  assert.ok(navStart >= 0 && navEnd > navStart && lower > navEnd && copyright > lower && contacts > copyright);
+  assert.match(footer, /© MYROCK · 성균관대학교 중앙 밴드동아리/);
   assert.match(footer, /<span>회장 김서연 · 010-6350-7007<\/span>/);
   assert.match(footer, /<span>부회장 신희수 · 010-7684-4336<\/span>/);
   assert.match(footer, /<span className="footer-bug-report">/);
   assert.match(footer, /오류 보고 · naa3000@naver.com/);
   assert.doesNotMatch(footer, /href="(?:tel:|mailto:)|기능 개발 중|운영진 연락처 등록 예정/);
 });
-test('footer has full-width divider, explicitly right-column contacts, and narrow-screen right alignment', () => {
-  assert.match(styles, /\.site-footer \.footer-lower\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) max-content;[^}]*border-top:\s*1px solid var\(--border\);/s);
-  assert.match(styles, /\.site-footer \.footer-contact-section\s*\{[^}]*grid-column:\s*2;[^}]*justify-self:\s*end;[^}]*align-items:\s*flex-end;/s);
-  assert.match(styles, /\.site-footer \.footer-bottom\s*\{[^}]*grid-column:\s*1 \/ -1;/s);
-  assert.match(styles, /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.site-footer \.footer-lower\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);/);
-  assert.match(styles, /\.footer-contact-people\s*\{\s*flex-direction:\s*column;\s*align-items:\s*flex-end;/);
+test('footer copyright is top-left and contacts top-right with mobile stacking', () => {
+  assert.match(styles, /\.site-footer \.footer-lower\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) max-content;[^}]*align-items:\s*start;[^}]*border-top:\s*1px solid var\(--border\);/s);
+  assert.match(styles, /\.site-footer \.footer-bottom\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1;[^}]*padding:\s*2px 0 0;/s);
+  assert.match(styles, /\.site-footer \.footer-contact-section\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1;[^}]*justify-self:\s*end;/s);
+  assert.match(styles, /@media \(max-width:\s*620px\)[\s\S]*?\.site-footer \.footer-bottom\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1;/);
+  assert.match(styles, /@media \(max-width:\s*620px\)[\s\S]*?\.site-footer \.footer-contact-section\s*\{\s*grid-column:\s*1;\s*grid-row:\s*2;/);
 });
