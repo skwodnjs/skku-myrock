@@ -48,7 +48,7 @@ test('gallery cover opens full view with thumbnail selection, carousel navigatio
   assert.match(component, /event\.key === 'ArrowRight'/);
   assert.match(component, /onTouchEnd=\{onTouchEnd\}/);
   assert.match(component, /document\.body\.style\.overflow = 'hidden'/);
-  assert.match(component, /'전체보기'/);
+  assert.match(component, /gallery-album-action[^>]*>[^\n]*전체보기/);
   assert.doesNotMatch(app.match(/function Gallery\([\s\S]*?function Equipment/)?.[0] ?? '', /\.photo-item|미리보기/);
 });
 test('album placeholders and lightbox have separate styles from the old broken photo items', () => {
