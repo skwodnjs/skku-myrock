@@ -137,7 +137,7 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
       if (event.target === event.currentTarget) closeAlbum();
     }}>
       <section ref={dialogRef} className="gallery-lightbox" role="dialog" aria-modal="true"
-        aria-labelledby="gallery-viewer-title" aria-describedby="gallery-viewer-hint"
+        aria-labelledby="gallery-viewer-title"
         onKeyDown={onModalKeyDown}>
         <header className="gallery-lightbox-header">
           <div className="gallery-lightbox-titles">
@@ -186,7 +186,6 @@ export default function PhotoGallery({ onRegister }: { onRegister: () => void })
           </aside>
         </div>
 
-        <p id="gallery-viewer-hint" className="gallery-viewer-hint">좌우 화살표 또는 사진을 밀어서 넘길 수 있습니다. Esc 키로 닫을 수 있습니다.</p>
       </section>
     </div>}
   </section>;
