@@ -15,6 +15,7 @@ export type MemberRecord = NewMember & {
   role: MemberRole;
   handoverAccess: boolean;
   protected: boolean;
+  updateTime: string;
 };
 export type ImportResult = {
   studentId: string;
@@ -46,6 +47,25 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 export async function loadMembers(cursor: string | null = null) {
   return api<MemberPage>('list' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
+}
+
+// Fetch every page before sorting so "가나다순" applies to the entire roster.
+export async function loadAllMembers(): Promise<MemberRecord[]> {
+  const records: MemberRecord[] = [];
+  const cursors = new Set<string>();
+  let cursor: string | null = null;
+  for (let pageNo = 0; pageNo < 60; pageNo++) {
+    const page = await loadMembers(cursor);
+    records.push(...page.members);
+    if (!page.nextCursor) {
+      return records.sort((a, b) =>
+        a.name.localeCompare(b.name, 'ko') || a.studentId.localeCompare(b.studentId, 'ko'));
+    }
+    if (cursors.has(page.nextCursor)) throw new Error('부원 명단 페이지 기준이 중복되었습니다.');
+    cursors.add(page.nextCursor);
+    cursor = page.nextCursor;
+  }
+  throw new Error('부원 명단이 너무 많습니다. 관리 서버의 페이지 한도를 확인해 주세요.');
 }
 export type PreviewResult = { studentId: string; status: 'new' | 'existing' };
 export async function previewMembers(members: NewMember[]): Promise<PreviewResult[]> {
@@ -95,7 +115,27 @@ export async function saveMemberPermissions(member: MemberRecord) {
     uid: member.uid,
     role: member.role,
     handoverAccess: member.handoverAccess,
-    positions: member.positions,
+    expectedUpdateTime: member.updateTime,
+  });
+}
+export async function saveMemberSessions(member: MemberRecord, sessions: Session[]) {
+  await api<{ success: boolean }>('sessions', {
+    uid: member.uid, sessions, expectedUpdateTime: member.updateTime,
+  });
+}
+export async function saveMemberDetails(member: MemberRecord) {
+  await api<{ success: boolean }>('details', {
+    uid: member.uid, name: member.name, studentId: member.studentId,
+    generation: member.generation, positions: member.positions,
+    expectedUpdateTime: member.updateTime,
+  });
+}
+export async function resetMemberPassword(member: MemberRecord) {
+  await api<{ success: boolean }>('reset-password', { uid: member.uid });
+}
+export async function deleteMember(member: MemberRecord) {
+  await api<{ success: boolean }>('delete', {
+    uid: member.uid, expectedUpdateTime: member.updateTime,
   });
 }
 
