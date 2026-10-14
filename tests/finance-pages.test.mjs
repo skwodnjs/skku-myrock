@@ -23,7 +23,12 @@ test('finance landing introduces donations before account instructions and trans
   assert.match(landing, /onClick=\{onExpenses\}/);
 });
 test('account is explicitly unconfigured and never advertises an invented payable account', () => {
-  assert.match(finance, /계좌 정보 등록 예정/);
+  assert.doesNotMatch(finance, /계좌 정보 등록 예정|finance-bank-pending/);
+  assert.match(finance, /<span>은행<\/span><strong>등록 예정<\/strong>/);
+  assert.match(finance, /<span>계좌번호<\/span><strong>등록 예정<\/strong>/);
+  assert.match(finance, /<span>예금주<\/span><strong>등록 예정<\/strong>/);
+  assert.match(styles, /\.finance-privacy-note\s*\{[^}]*margin-top:\s*24px;/s);
+  assert.doesNotMatch(styles, /\.finance-bank-pending\s*\{/);
   assert.doesNotMatch(finance, /후원 계좌가 아직 등록되지 않았습니다|입금 전 운영진에게 계좌 정보를 확인해 주세요/);
   assert.ok(!/\b\d{2,4}-\d{2,6}-\d{3,9}\b/.test(finance));
 });
