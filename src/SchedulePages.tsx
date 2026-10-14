@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clock3, Plus, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Plus, Users } from 'lucide-react';
 
 export type DemoSchedule = {
   id: string;
