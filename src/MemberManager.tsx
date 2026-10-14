@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { ArrowRight, Check, Download, FileSpreadsheet, Plus, RefreshCw, Search, ShieldCheck, Upload, Users } from 'lucide-react';
 import type { MemberRole, Session } from './firebase';
 import {
   callError, downloadCredentials, downloadExampleCsv, loadMembers,
-  parseMembersCsv, registerMembers, saveMemberPermissions,
+  parseMembersCsv, previewMembers, registerMembers, saveMemberPermissions,
 } from './memberAdmin';
 import type { ImportResult, MemberRecord, NewMember } from './memberAdmin';
 
@@ -28,6 +28,9 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
   const [preview, setPreview] = useState<NewMember[]>([]);
   const [csvStep, setCsvStep] = useState<'choose' | 'review' | 'complete'>('choose');
   const [progressDone, setProgressDone] = useState(0);
+  const [checkingPreview, setCheckingPreview] = useState(false);
+  const [previewStatuses, setPreviewStatuses] = useState<Record<string, 'new' | 'existing'>>({});
+  const previewRequest = useRef(0);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [individual, setIndividual] = useState<NewMember>(blankMember);
   const [individualPositionsText, setIndividualPositionsText] = useState('');
@@ -58,19 +61,43 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
     finally { setLoading(false); }
   }
 
+  async function inspectPreview(membersToCheck: NewMember[], requestId: number) {
+    setCheckingPreview(true);
+    setPreviewStatuses({});
+    try {
+      const examined = await previewMembers(membersToCheck);
+      if (requestId !== previewRequest.current) return;
+      const statuses = Object.fromEntries(examined.map(entry => [entry.studentId, entry.status])) as Record<string, 'new' | 'existing'>;
+      setPreviewStatuses(statuses);
+      const newCount = examined.filter(entry => entry.status === 'new').length;
+      setMessage(`CSV 전체 ${membersToCheck.length}명: 신규 등록 예상 ${newCount}명, 기존 계정 ${membersToCheck.length - newCount}명. 내용을 확인한 뒤 등록해 주세요.`);
+    } catch (err) {
+      if (requestId !== previewRequest.current) return;
+      setError('기존 계정 확인에 실패했습니다. Cloudflare Pages API 설정을 확인하고 다시 시도해 주세요. ' + callError(err));
+    } finally {
+      if (requestId === previewRequest.current) setCheckingPreview(false);
+    }
+  }
+
   async function selectCsv(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    setResults([]); setPreview([]); setCsvStep('choose'); setProgressDone(0); setError(''); setMessage('');
+    const requestId = ++previewRequest.current;
+    setResults([]); setPreview([]); setPreviewStatuses({}); setCsvStep('choose'); setProgressDone(0); setError(''); setMessage('');
     if (!file) return;
     if (file.size > 500_000) { setError('CSV 파일은 500KB 이하여야 합니다.'); return; }
     try {
       const parsed = parseMembersCsv(await file.text());
+      if (requestId !== previewRequest.current) return;
       setFileName(file.name);
       setPreview(parsed);
       setCsvStep('review');
-      setMessage(`CSV에서 ${parsed.length}명의 등록 예정 회원을 읽었습니다. 이름·학번·기수·세션을 확인한 뒤 확정해 주세요.`);
-    } catch (err) { setFileName(''); setError(err instanceof Error ? err.message : '파일을 읽지 못했습니다.'); }
+      await inspectPreview(parsed, requestId);
+    } catch (err) {
+      if (requestId !== previewRequest.current) return;
+      setFileName(''); setCsvStep('choose');
+      setError(err instanceof Error ? err.message : '파일을 읽지 못했습니다.');
+    }
   }
 
   async function submit(membersToCreate: NewMember[], fromCsv = false) {
@@ -171,15 +198,20 @@ export default function MemberManager({ currentUid }: { currentUid: string }) {
               </>}
               {csvStep === 'review' && <>
                 <div className="member-preview">
-                  <h3>등록 예정 명단 · 총 {preview.length}명</h3>
+                  <h3>등록 전 명단 확인 · 총 {preview.length}명</h3>
+                  {checkingPreview ? <p className="member-progress" role="status">Firebase에서 이미 등록된 학번을 확인 중입니다...</p> : Object.keys(previewStatuses).length === preview.length && <div className="member-result-counts">
+                    <span>신규 등록 예상: {preview.filter(member => previewStatuses[member.studentId] === 'new').length}명</span>
+                    <span>기존 계정: {preview.filter(member => previewStatuses[member.studentId] === 'existing').length}명</span>
+                  </div>}
                   <p className="form-hint">파일: {fileName} · 아래 회원을 모두 확인해 주세요. 이미 가입한 학번은 덮어쓰지 않고 건너뜁니다.</p>
-                  <div className="member-preview-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>기수</th><th>세션</th><th>직책</th></tr></thead>
-                    <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{member.sessions.join(', ')}</td><td>{member.positions.join(', ') || '—'}</td></tr>)}</tbody>
+                  <div className="member-preview-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>기수</th><th>세션</th><th>직책</th><th>등록 예상</th></tr></thead>
+                    <tbody>{preview.map(member => <tr key={member.studentId}><td>{member.studentId}</td><td>{member.name}</td><td>{member.generation}</td><td>{member.sessions.join(', ')}</td><td>{member.positions.join(', ') || '—'}</td><td>{previewStatuses[member.studentId] === 'new' ? '신규 생성' : previewStatuses[member.studentId] === 'existing' ? '기존 계정' : '확인 중'}</td></tr>)}</tbody>
                   </table></div>
                   {busy && <p className="member-progress" role="status">계정 등록 진행 중: {progressDone} / {preview.length}명 처리 완료</p>}
                   <div className="member-upload-actions">
-                    <button type="button" className="outline-action" disabled={busy} onClick={() => {setCsvStep('choose');setPreview([]);setFileName('');setMessage('');}}>다른 파일 선택</button>
-                    <button type="button" className="button button-primary" disabled={busy || preview.length === 0} onClick={() => void submit(preview,true)}>{busy ? '등록 처리 중...' : `확인한 ${preview.length}명 등록 실행`} <ArrowRight size={15}/></button>
+                    <button type="button" className="outline-action" disabled={busy} onClick={() => {++previewRequest.current;setCsvStep('choose');setPreview([]);setPreviewStatuses({});setFileName('');setMessage('');}}>다른 파일 선택</button>
+                    {!checkingPreview && Object.keys(previewStatuses).length !== preview.length && <button type="button" className="outline-action" onClick={() => {setError(''); void inspectPreview(preview,previewRequest.current);}}>기존 계정 다시 확인</button>}
+                    <button type="button" className="button button-primary" disabled={busy || checkingPreview || preview.length === 0 || Object.keys(previewStatuses).length !== preview.length} onClick={() => void submit(preview,true)}>{busy ? '등록 처리 중...' : `확인한 ${preview.length}명 등록 실행`} <ArrowRight size={15}/></button>
                   </div>
                   <p className="form-hint">이 버튼을 누를 때 실제 계정이 생성됩니다. 기존 계정의 비밀번호와 권한은 변경되지 않습니다.</p>
                 </div>
