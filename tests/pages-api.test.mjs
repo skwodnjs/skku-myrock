@@ -114,7 +114,7 @@ test('staff detail and part-leader session payloads use explicit fields and vers
     {uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:['파트장'],expectedUpdateTime:t});
   assert.throws(() => validateSessionsChange({uid:'abcdefghij_12',sessions:['unknown'],expectedUpdateTime:t}),/세션/);
   assert.throws(() => validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'1',generation:'29',positions:[],expectedUpdateTime:t}),/학번/);
-  assert.throws(() => validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:[],expectedUpdateTime:'stale'}),/새로/);
+  assert.throws(() => validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:[],expectedUpdateTime:'stale'}),/다시 조회/);
 });
 test('protected admin account and stale versions cannot be modified by others', () => {
   const caller = {uid:'abcdefghij_12',role:'president',superadmin:false};
