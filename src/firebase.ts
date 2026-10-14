@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 const config = {
   apiKey: 'AIzaSyC-2H282ITWdqBTYVJBsoC0gnA9Y-xl4LM',
@@ -14,6 +15,7 @@ const config = {
 export const firebaseApp = initializeApp(config);
 export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
+export const functions = getFunctions(firebaseApp, 'asia-northeast3');
 
 // Firebase Authentication uses email/password internally; the UI exposes only student IDs.
 // These synthetic addresses are not real mailboxes and cannot receive password resets.
@@ -29,4 +31,6 @@ export interface MemberProfile {
   sessions: Session[];
   positions: string[];
   role: MemberRole;
+  handoverAccess: boolean;
+  superadmin: boolean;
 }
