@@ -129,7 +129,7 @@ export function ScheduleLanding({
 
 
 const SLOT_MINUTES = 30;
-const SLOT_HEIGHT = 27;
+const SLOT_HEIGHT = 20;
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
 const parseMinutes = (value: string): number => {
