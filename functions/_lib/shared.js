@@ -10,6 +10,15 @@ export class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 export const reject = (message, status = 400) => { throw new ApiError(status, message); };
+
+// Newly created accounts use the 10-digit student ID as their initial password.
+// Never apply this to an existing account; users may change it later.
+export function initialPasswordForStudentId(studentId) {
+  if (typeof studentId !== 'string' || !/^\d{10}$/.test(studentId)) {
+    reject('학번은 10자리 숫자여야 합니다.');
+  }
+  return studentId;
+}
 export function textField(value, name, max = 80) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) {
     reject(name + ' 형식이 올바르지 않습니다.');
