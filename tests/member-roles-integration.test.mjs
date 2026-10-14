@@ -66,6 +66,20 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
   const accounts = new Map([[uid,{
     localId:uid,email:'2026300001@members.skku-myrock.firebaseapp.com',displayName:'홍길동',
   }]]);
+  for (const actor of Object.values(actors)) {
+    accounts.set(actor.uid, {
+      localId: actor.uid,
+      email: actor.uid + '@members.skku-myrock.firebaseapp.com',
+      displayName: '운영진',
+    });
+  }
+  for (const extraUid of ['extraRosterOne123','extraRosterTwo123','extraRosterThree123']) {
+    add(extraUid,{studentId:'2026123999',name:'추가테스트',generation:'29',
+      sessions:['기타'],positions:[],role:'member',handoverAccess:false});
+    accounts.set(extraUid,{localId:extraUid,
+      email:extraUid+'@members.skku-myrock.firebaseapp.com',displayName:'추가테스트'});
+  }
+
   let lastResetPassword = null;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (rawUrl, options={}) => {
