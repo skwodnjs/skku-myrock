@@ -1010,19 +1010,28 @@
 }
 
 
-/* Footer: separate site navigation from officer contacts below a divider. */
+/* Footer: menu above a full-width divider, contacts in a real right-hand grid column. */
 .site-footer .footer-main {
   padding-top: 48px;
   padding-bottom: 36px;
 }
+.site-footer .footer-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  border-top: 1px solid var(--border);
+  padding-top: 19px;
+}
 .site-footer .footer-contact-section {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
+  justify-self: end;
   align-items: flex-end;
-  gap: 11px;
-  padding-top: 19px;
-  padding-bottom: 0;
-  border-top: 1px solid var(--border);
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: right;
 }
 .footer-contact-people {
   display: flex;
@@ -1030,29 +1039,25 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   column-gap: 28px;
-  row-gap: 9px;
+  row-gap: 8px;
 }
-.footer-contact-people a,
+.footer-contact-people span,
 .footer-bug-report {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 7px;
-  text-align: right;
   color: #758780;
-  text-decoration: none;
   font-size: 11px;
   line-height: 1.6;
+  text-align: right;
   overflow-wrap: anywhere;
 }
 .footer-bug-report svg { flex: 0 0 auto; }
-.footer-contact-people a:hover,
-.footer-bug-report:hover { color: var(--accent-dark); }
-.footer-contact-people a:focus-visible,
-.footer-bug-report:focus-visible {
-  outline: 2px solid var(--accent-dark);
-  outline-offset: 3px;
-}
 .site-footer .footer-bottom {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
   border-top: 0;
   min-height: 0;
   padding-top: 20px;
@@ -1064,7 +1069,8 @@
 }
 @media (max-width: 620px) {
   .site-footer .footer-main { padding-top: 36px; padding-bottom: 27px; }
-  .site-footer .footer-contact-section { padding-top: 17px; gap: 10px; }
+  .site-footer .footer-lower { grid-template-columns: minmax(0, 1fr); padding-top: 17px; }
+  .site-footer .footer-contact-section { grid-column: 1; gap: 9px; }
   .footer-contact-people { flex-direction: column; align-items: flex-end; row-gap: 8px; }
   .site-footer .footer-bottom { padding-top: 18px; padding-bottom: 23px; }
 }
