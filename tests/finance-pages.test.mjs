@@ -95,10 +95,12 @@ test('footer keeps navigation separate from officers and bug report details', ()
   assert.doesNotMatch(footer, /기능 개발 중|운영진 연락처 등록 예정/);
   assert.ok(!footer.slice(navStart, navEnd).includes('tel:'));
 });
-test('footer contact strip has a divider and stacks on narrow screens', () => {
+test('footer contact strip is right-aligned under the divider and stacks on narrow screens', () => {
   assert.match(styles, /\.site-footer \.footer-contact-section\s*\{[^}]*border-top:\s*1px solid var\(--border\);/s);
+  assert.match(styles, /\.site-footer \.footer-contact-section\s*\{[^}]*align-items:\s*flex-end;/s);
+  assert.match(styles, /\.footer-contact-people\s*\{[^}]*justify-content:\s*flex-end;/s);
   assert.match(styles, /\.site-footer \.footer-bottom\s*\{[^}]*border-top:\s*0;/s);
   assert.match(styles, /\.footer-contact-people\s*\{[^}]*display:\s*flex;/s);
-  assert.match(styles, /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.footer-contact-people\s*\{\s*flex-direction:\s*column;/);
+  assert.match(styles, /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.footer-contact-people\s*\{\s*flex-direction:\s*column;\s*align-items:\s*flex-end;/);
   assert.match(styles, /\.footer-bug-report:hover/);
 });
