@@ -240,7 +240,7 @@ export function ScheduleDetail({ schedule, onBack }: { schedule: DemoSchedule | 
   // One row per 30 minutes; each hour label sits exactly on the row boundary.
   const timeTicks = Array.from({ length: slots.length + 1 }, (_, index) => parseMinutes(schedule.startTime) + index * SLOT_MINUTES)
     .filter((minutes, index) => minutes % 60 === 0 || index === 0 || index === slots.length);
-  const columns = `64px repeat(${dates.length}, minmax(0, 1fr))`;
+  const columns = `64px repeat(${dates.length}, 70px)`;
 
   return <>
     <ScheduleHeading title={schedule.title} tag="SCHEDULE DETAIL" description={schedule.description} />
@@ -270,7 +270,7 @@ export function ScheduleDetail({ schedule, onBack }: { schedule: DemoSchedule | 
           </div>
           <div className="schedule-timetable-scroll" role="region" aria-label={schedule.title + ' 시간표 (가로 스크롤 가능)'} tabIndex={0}>
             <div className="schedule-timetable-inner" style={{
-              minWidth: Math.max(720, 64 + dates.length * 86),
+              width: 64 + dates.length * 70,
             }}>
               <div className="schedule-date-header" style={{ gridTemplateColumns: columns }}>
                 <span className="schedule-date-corner">시간</span>
