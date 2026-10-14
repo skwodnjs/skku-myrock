@@ -16,11 +16,12 @@ import MemberManager from './MemberManager';
 import { purgeAllOtherMembers } from './memberAdmin';
 import PasswordChange from './PasswordChange';
 import PhotoGallery from './PhotoGallery';
+import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -44,13 +45,18 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'schedule-detail' ? '/schedule' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match ? match[1] : null;
 };
+const scheduleIdFromPath = (): string | null => {
+  const match = window.location.pathname.match(/^\/schedule\/([a-z0-9-]+)\/?$/);
+  return match ? match[1] : null;
+};
 const pathToPage = (): Page => {
   if (noticeIdFromPath()) return 'notice-detail';
+  if (scheduleIdFromPath()) return 'schedule-detail';
   if (/^\/finance\/donations\/?$/.test(window.location.pathname)) return 'donations';
   if (/^\/finance\/expenses\/?$/.test(window.location.pathname)) return 'expenses';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -239,18 +245,6 @@ function NoticeDetail({ notice, backToList }: { notice: NoticePost | undefined; 
   </>;
 }
 
-function Schedule({ notify }: { notify: Notify }) {
-  const [view, setView] = useState<'mine' | 'team'>('mine');
-  const days = ['월', '화', '수', '목', '금', '토', '일'];
-  const hours = ['17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
-  return <><PageHeading tag="WHEN2MEET" title="합주 시간 조율" description="함께 가능한 시간을 찾고, 확정된 합주 일정을 관리할 수 있습니다." />
-    <section className="container section-block"><div className="toolbar toolbar-bottom"><div className="tabs"><button type="button" className={view === 'mine' ? 'active' : ''} onClick={() => setView('mine')}>내 시간표</button><button type="button" className={view === 'team' ? 'active' : ''} onClick={() => setView('team')}>구성팀 시간표</button></div><button type="button" className="button button-primary" onClick={() => notify()}><Plus size={16}/> 시간표 만들기</button></div>
-      <div className="schedule-overview"><div><span className="small-label">미리보기</span><h2>{view === 'mine' ? '내가 참여한 시간표' : '구성팀 시간표'}</h2><p>{view === 'mine' ? '초대받은 합주 시간표가 여기에 표시됩니다.' : '운영진이 구성팀을 위해 만든 시간표가 표시됩니다.'}</p></div><button type="button" className="outline-action" onClick={() => notify()}>시간표 열기 <ArrowUpRight size={16}/></button></div>
-      <div className="section-heading schedule-heading"><div><h2>시간 조율 화면</h2><p>주간 시간표 배치 예시 · 실제 응답 데이터는 아직 없습니다</p></div><span className="preview-tag">PREVIEW</span></div>
-      <div className="availability-layout"><div className="calendar-wrapper"><div className="availability-head"><span>17:00 — 23:00</span><span>월요일부터 일요일까지</span></div><div className="calendar-scroll"><div className="calendar-grid"><div className="calendar-corner">TIME</div>{days.map(d => <div key={d} className="calendar-day">{d}</div>)}{hours.map((hour, row) => <div className="calendar-row" key={hour}><div className="calendar-hour">{hour}</div>{days.map((day, col) => <div key={day} className={`calendar-cell level-${(row + col * 2 + (row * col) % 3) % 4}`} title="시간 선택 화면 예시" />)}</div>)}</div></div><div className="calendar-legend"><span><i className="legend-level-0"/> 가능 인원 적음</span><span><i className="legend-level-2"/> 일부 가능</span><span><i className="legend-level-3"/> 대부분 가능</span></div></div><aside className="calendar-guide"><h3>사용 방법</h3><ol><li>학번으로 참여자를 초대합니다.</li><li>각자 가능한 시간을 입력합니다.</li><li>본인이 합주 시간을 확정합니다.</li></ol><p>확정된 시간은 다른 시간표에서 자동으로 제외되도록 구현할 예정입니다.</p></aside></div>
-    </section>
-  </>;
-}
 
 function Gallery({ notify }: { notify: Notify }) {
   return <>
@@ -352,6 +346,7 @@ function Profile({ user, profile, pending, error, notify, onSaved }: {user: User
 function App() {
   const [page,setPage] = useState<Page>(pathToPage);
   const [activeNoticeId,setActiveNoticeId] = useState<string | null>(noticeIdFromPath);
+  const [activeScheduleId,setActiveScheduleId] = useState<string | null>(scheduleIdFromPath);
   const [menuOpen,setMenuOpen] = useState(false);
   const [openGroup,setOpenGroup] = useState<string | null>(null);
   const [accountOpen,setAccountOpen] = useState(false);
@@ -387,8 +382,8 @@ function App() {
     });
     return()=>{live=false;unsub();};
   },[]);
-  useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId]);
+  useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());setActiveScheduleId(scheduleIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
+  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -402,6 +397,15 @@ function App() {
     window.scrollTo({top:0,behavior:'instant'});
   };
 
+  const openSchedule = (id: string) => {
+    if (!findSchedule(id)) return;
+    const path = '/schedule/' + encodeURIComponent(id);
+    if (window.location.pathname !== path) window.history.pushState(null, '', path);
+    setActiveScheduleId(id);
+    setPage('schedule-detail');
+    setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);
+    window.scrollTo({top:0,behavior:'instant'});
+  };
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
   const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
   const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
@@ -454,7 +458,14 @@ function App() {
       {page==='about'&&<About navigate={navigate}/>}
       {page==='news'&&<News notify={notify} openNotice={openNotice}/>}
       {page==='notice-detail'&&<NoticeDetail notice={findNotice(activeNoticeId ?? '')} backToList={() => navigate('news')}/>}
-      {page==='schedule'&&<Schedule notify={notify}/>}
+      {page==='schedule'&&<ScheduleLanding
+        canCreateTeam={Boolean(user && !authPending && currentLevel)}
+        onCreate={() => notify('시간표 만들기 기능은 추후 연결할 예정입니다.')}
+        onCreateTeam={() => notify('구성팀 시간표 만들기 기능은 추후 연결할 예정입니다.')}
+        onOpen={openSchedule}
+      />}
+      {page==='schedule-detail'&&<ScheduleDetail schedule={findSchedule(activeScheduleId ?? '')} onBack={() => navigate('schedule')}/>}
+
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')}/>}
