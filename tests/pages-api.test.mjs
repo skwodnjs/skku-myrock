@@ -3,12 +3,18 @@ import assert from 'node:assert/strict';
 import {
   validateMembers, validatePermissions, toFields, docFields,
   memberView, secureOrigin, ApiError, initialPasswordForStudentId,
+  canPerform, validateDetails, validateSessionsChange,
 } from '../functions/_lib/shared.js';
 import { onRequestPost as registerHandler } from '../functions/api/members/register.js';
 import { onRequestPost as permissionHandler } from '../functions/api/members/permissions.js';
 import { onRequestGet as listHandler } from '../functions/api/members/list.js';
 import { onRequestGet as healthHandler } from '../functions/api/health.js';
 import { onRequestPost as previewHandler } from '../functions/api/members/preview.js';
+import { onRequestPost as sessionsHandler } from '../functions/api/members/sessions.js';
+import { onRequestPost as detailsHandler } from '../functions/api/members/details.js';
+import { onRequestPost as resetHandler } from '../functions/api/members/reset-password.js';
+import { onRequestPost as deleteHandler } from '../functions/api/members/delete.js';
+import { requireFreshVersion, requireMutableTarget } from '../functions/_lib/google.js';
 
 const alice = {
   studentId: '2026300001',
@@ -32,10 +38,10 @@ test('role changes cannot add unknown privileges', () => {
     uid: 'abcdefghij_12',
     role: 'member',
     handoverAccess: true,
-    positions: ['총무'],
-  }), {uid:'abcdefghij_12',role:'member',handoverAccess:true,positions:['총무']});
-  assert.throws(() => validatePermissions({uid:'abcdefghij_12',role:'superadmin',handoverAccess:true,positions:[]}), /회원 권한/);
-  assert.throws(() => validatePermissions({uid:'abcdefghij_12',role:'president',handoverAccess:'true',positions:[]}), /인수인계/);
+    expectedUpdateTime: '2026-10-14T12:00:00Z',
+  }), {uid:'abcdefghij_12',role:'member',handoverAccess:true,expectedUpdateTime:'2026-10-14T12:00:00Z'});
+  assert.throws(() => validatePermissions({uid:'abcdefghij_12',role:'superadmin',handoverAccess:true,expectedUpdateTime:'2026-10-14T12:00:00Z'}), /회원 권한/);
+  assert.throws(() => validatePermissions({uid:'abcdefghij_12',role:'president',handoverAccess:'true',expectedUpdateTime:'2026-10-14T12:00:00Z'}), /인수인계/);
 });
 test('Firestore fields serialize sessions, booleans, and protected flag', () => {
   const fields = toFields({...alice, role:'president', handoverAccess:false, superadmin:true});
@@ -62,7 +68,7 @@ test('all membership API routes reject requests without login', async () => {
   const permissions = new Request('https://skku-myrock.pages.dev/api/members/permissions', {
     method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({uid:'abcdefghij_12',role:'president',handoverAccess:false,positions:[]}),
   });
-  for (const [handler, request] of [[listHandler,get],[previewHandler,preview],[registerHandler,post],[permissionHandler,permissions]]) {
+  for (const [handler, request] of [[listHandler,get],[previewHandler,preview],[registerHandler,post],[permissionHandler,permissions],[sessionsHandler,post],[detailsHandler,post],[resetHandler,post],[deleteHandler,post]]) {
     const response = await handler({request,env:{}});
     assert.equal(response.status,401);
     assert.equal(response.headers.get('cache-control'),'no-store');
@@ -87,4 +93,34 @@ test('new account initial password matches the exact 10-digit student ID', () =>
   assert.throws(() => initialPasswordForStudentId('202630001'), /10자리/);
   assert.throws(() => initialPasswordForStudentId('20263000001'), /10자리/);
   assert.throws(() => initialPasswordForStudentId('abcdef0123'), /10자리/);
+});
+
+test('privilege matrix is monotonic and OB handover alone never grants member access', () => {
+  const roles = ['member', 'part_leader', 'staff', 'president'];
+  for (let i = 0; i < roles.length; i++) {
+    const caller = { role: roles[i], superadmin: false };
+    assert.equal(canPerform(caller, 'part_leader'), i >= 1);
+    assert.equal(canPerform(caller, 'staff'), i >= 2);
+    assert.equal(canPerform(caller, 'president'), i >= 3);
+  }
+  assert.equal(canPerform({role:'member',handoverAccess:true},'part_leader'), false);
+  assert.equal(canPerform({role:'member',superadmin:true},'president'), true);
+});
+test('staff detail and part-leader session payloads use explicit fields and versions', () => {
+  const t = '2026-10-14T12:00:00Z';
+  assert.deepEqual(validateSessionsChange({uid:'abcdefghij_12',sessions:['보컬','기타'],expectedUpdateTime:t}),
+    {uid:'abcdefghij_12',sessions:['보컬','기타'],expectedUpdateTime:t});
+  assert.deepEqual(validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:['파트장'],expectedUpdateTime:t}),
+    {uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:['파트장'],expectedUpdateTime:t});
+  assert.throws(() => validateSessionsChange({uid:'abcdefghij_12',sessions:['unknown'],expectedUpdateTime:t}),/세션/);
+  assert.throws(() => validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'1',generation:'29',positions:[],expectedUpdateTime:t}),/학번/);
+  assert.throws(() => validateDetails({uid:'abcdefghij_12',name:'홍길동',studentId:'2026300001',generation:'29',positions:[],expectedUpdateTime:'stale'}),/새로/);
+});
+test('protected admin account and stale versions cannot be modified by others', () => {
+  const caller = {uid:'abcdefghij_12',role:'president',superadmin:false};
+  const target = {updateTime:'2026-10-14T12:00:00Z',fields:{superadmin:{booleanValue:true}}};
+  assert.throws(() => requireMutableTarget(caller,target,'protected-member'), /시스템 관리자/);
+  assert.throws(() => requireMutableTarget(caller,{fields:{}},caller.uid,{protectSelf:true}), /본인/);
+  assert.throws(() => requireFreshVersion(target,'2026-10-14T13:00:00Z'),/새로고침/);
+  assert.doesNotThrow(() => requireFreshVersion(target,target.updateTime));
 });
