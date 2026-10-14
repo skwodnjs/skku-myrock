@@ -16,10 +16,11 @@ import MemberManager from './MemberManager';
 import { purgeAllOtherMembers } from './memberAdmin';
 import PasswordChange from './PasswordChange';
 import PhotoGallery from './PhotoGallery';
+import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -43,13 +44,15 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match ? match[1] : null;
 };
 const pathToPage = (): Page => {
   if (noticeIdFromPath()) return 'notice-detail';
+  if (/^\/finance\/donations\/?$/.test(window.location.pathname)) return 'donations';
+  if (/^\/finance\/expenses\/?$/.test(window.location.pathname)) return 'expenses';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
   return allNav.some(item => item.id === path) ? path as Page : 'home';
 };
@@ -263,12 +266,6 @@ function Equipment({ notify }: { notify: Notify }) {
   </>;
 }
 
-function Finance({ notify }: { notify: Notify }) {
-  return <><PageHeading tag="FINANCE & SUPPORT" title="후원 · 회계" description="후원 내역과 회비 집행 내역을 기록하고 확인하는 공간입니다." />
-    <section className="container section-block"><SectionHeading title="회비 집행 내역" aside="운영진이 등록한 내역이 표시됩니다" /><div className="finance-table"><div className="finance-table-head"><span>항목</span><span>구분</span><span>날짜</span><span>금액</span></div><EmptyState title="등록된 내역이 없습니다" description="실제 데이터 연결 후 내역을 확인할 수 있습니다." /></div></section>
-    <section className="container section-block"><SectionHeading title="후원 안내" /><div className="support-panel"><div><h3>모여락을 응원해 주세요.</h3><p>후원 계좌와 후원 관련 안내가 등록될 자리입니다.</p></div><button type="button" className="outline-action" onClick={() => notify()}>후원 안내 확인 <ArrowUpRight size={16}/></button></div></section>
-  </>;
-}
 
 function Handover({ openLogin, notify }: { openLogin: () => void; notify: Notify }) {
   return <><PageHeading tag="HANDOVER" title="인수인계" description="운영진이 해마다 업무와 기록을 이어갈 수 있도록 마련한 공간입니다." />
@@ -391,7 +388,7 @@ function App() {
     return()=>{live=false;unsub();};
   },[]);
   useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId]);
+  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -460,7 +457,9 @@ function App() {
       {page==='schedule'&&<Schedule notify={notify}/>}
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
-      {page==='finance'&&<Finance notify={notify}/>}
+      {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')}/>}
+      {page==='donations'&&<DonationHistory onBack={() => navigate('finance')} loggedIn={Boolean(user)} authPending={authPending} onLogin={showLogin}/>}
+      {page==='expenses'&&<ExpenseHistory onBack={() => navigate('finance')}/>}
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
       {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager key={rosterRevision} currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
     </main>
