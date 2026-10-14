@@ -67,6 +67,17 @@ export function ScheduleLanding({
 }) {
   return <>
     <ScheduleHeading title="합주 시간 조율" description="새 시간표를 만들거나, 내가 참여한 합주 시간표를 확인하세요." />
+    <aside className="container schedule-usage-guide" aria-label="시간표 사용 안내">
+      <div className="schedule-usage-heading">
+        <strong>시간표 사용 안내</strong>
+        <span>아래 기능은 추후 지원 예정입니다.</span>
+      </div>
+      <ol className="schedule-usage-list">
+        <li><span aria-hidden="true">01</span><p>학번으로 다른 부원을 시간표에 초대할 수 있습니다.</p></li>
+        <li><span aria-hidden="true">02</span><p>운영진은 구성팀 전용 시간표를 개설할 수 있습니다.</p></li>
+        <li><span aria-hidden="true">03</span><p>합주 시간이 확정되면 참여자의 다른 시간표에서 겹치는 가능 시간이 자동으로 해제됩니다.</p></li>
+      </ol>
+    </aside>
     <section className="container section-block schedule-landing">
       <div className="schedule-action-grid">
         <button type="button" className="schedule-create-card" onClick={onCreate}>
