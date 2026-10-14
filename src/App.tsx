@@ -27,8 +27,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 const publicNav = navGroups.flatMap(group => group.items);
 const adminNav: NavItem[] = [{id:'members',label:'회원 관리'},{id:'handover',label:'인수인계'}];
 const allNav: NavItem[] = [...publicNav,...adminNav,{id:'profile',label:'내 정보'}];
-const canManageMembers = (profile: MemberProfile | null) => Boolean(profile && (profile.role === 'president' || profile.superadmin));
-const canViewHandover = (profile: MemberProfile | null) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || profile.superadmin));
+const canManageMembers = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role === 'president' || (profile.superadmin && hasSystemClaim)));
+const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
 const pathFor = (page: Page) => page === 'home' ? '/' : `/${page}`;
 const pathToPage = (): Page => {
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -239,14 +239,17 @@ function App() {
   const [profile,setProfile] = useState<MemberProfile | null>(null);
   const [authPending,setAuthPending] = useState(true);
   const [profileError,setProfileError] = useState('');
+  const [hasSystemClaim,setHasSystemClaim] = useState(false);
   useEffect(()=>{
     let live = true;
     const unsub = onAuthStateChanged(auth,async current=>{
       if(!live)return;
-      setUser(current);setProfile(null);setProfileError('');setAuthPending(true);
+      setUser(current);setProfile(null);setProfileError('');setHasSystemClaim(false);setAuthPending(true);
       if(current){
         try {
           const snapshot = await getDoc(doc(db,'users',current.uid));
+          const token = await current.getIdTokenResult().catch(() => null);
+          if(live)setHasSystemClaim(token?.claims.superadmin === true);
           if(!live)return;
           if(!snapshot.exists()) setProfileError('등록된 프로필이 없습니다. 관리자에게 문의해 주세요.');
           else {
@@ -267,8 +270,8 @@ function App() {
   const notify: Notify = (message='아직 연결되지 않은 기능입니다. 현재는 화면 구성 미리보기입니다.') => {setToast(message);window.setTimeout(()=>setToast(''),3500);};
   const showLogin=()=>{setLoginOpen(true);setMenuOpen(false);setAccountOpen(false);};
   const logout=async()=>{try{await signOut(auth);navigate('home');notify('로그아웃되었습니다.');}catch{notify('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');}};
-  const canManage=canManageMembers(profile);
-  const canHandover=canViewHandover(profile);
+  const canManage=canManageMembers(profile,hasSystemClaim);
+  const canHandover=canViewHandover(profile,hasSystemClaim);
   return <div className="site-root">
     <header className="site-header"><div className="container header-inner">
       <button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button>
