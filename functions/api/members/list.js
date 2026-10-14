@@ -9,7 +9,7 @@ export async function onRequestGet({ request, env }) {
     const cursor = url.searchParams.get('cursor');
     if (cursor && (cursor.length > 4000 || /[\u0000-\u001F\u007F]/.test(cursor))) reject('페이지 조회 기준이 올바르지 않습니다.');
     const target = new URL(FIRESTORE_ROOT + '/users');
-    target.searchParams.set('pageSize', '100');
+    target.searchParams.set('pageSize', '30');
     // Firestore indexes names; each page is ordered without fetching the entire roster.
     // __name__ provides stable ordering when multiple members share a name.
     target.searchParams.set('orderBy', 'name asc, __name__ asc');
