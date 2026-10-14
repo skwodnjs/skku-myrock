@@ -1,5 +1,4 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from './firebase';
+import { auth } from './firebase';
 import type { MemberRole, Session } from './firebase';
 
 export type NewMember = {
@@ -23,21 +22,62 @@ export type ImportResult = {
   message?: string;
 };
 type MemberPage = { members: MemberRecord[]; nextCursor: string | null };
-const fetchMembers = httpsCallable<{ cursor: string | null }, MemberPage>(functions, 'listMembers');
-const register = httpsCallable<{ members: NewMember[] }, { results: ImportResult[] }>(functions, 'registerMembers');
-const update = httpsCallable<
-  { uid: string; role: MemberRole; handoverAccess: boolean; positions: string[] },
-  { success: boolean }
->(functions, 'updateMemberPermissions');
 
-export async function loadMembers(cursor: string | null = null) {
-  return (await fetchMembers({ cursor })).data;
+async function api<T>(path: string, body?: unknown): Promise<T> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('로그인 상태가 아닙니다. 다시 로그인해 주세요.');
+  const token = await user.getIdToken();
+  const response = await fetch('/api/members/' + path, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: {
+      authorization: 'Bearer ' + token,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: 'no-store',
+    credentials: 'same-origin',
+  });
+  let data: Record<string, unknown>;
+  try { data = await response.json(); }
+  catch { throw new Error('Cloudflare API에 연결할 수 없습니다. Pages Functions 배포와 비밀키 설정을 확인해 주세요.'); }
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'API 요청에 실패했습니다.');
+  return data as T;
 }
-export async function registerMembers(members: NewMember[]) {
-  return (await register({ members })).data.results;
+export async function loadMembers(cursor: string | null = null) {
+  return api<MemberPage>('list' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''));
+}
+export async function registerMembers(
+  members: NewMember[],
+  onProgress?: (completed: number, results: ImportResult[]) => void,
+): Promise<ImportResult[]> {
+  const results: ImportResult[] = [];
+  for (let index = 0; index < members.length; index += 5) {
+    const chunk = members.slice(index, index + 5);
+    try {
+      const page = await api<{ results: ImportResult[] }>('register', { members: chunk });
+      if (!Array.isArray(page.results) || page.results.length !== chunk.length) {
+        throw new Error('서버 응답에 일부 회원의 등록 결과가 누락되었습니다.');
+      }
+      results.push(...page.results);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '연결 오류';
+      // A previous request may have succeeded even if the browser lost the response.
+      results.push(...chunk.map(member => ({
+        studentId: member.studentId,
+        name: member.name,
+        status: 'error' as const,
+        message: '결과를 확인할 수 없습니다. 자동 재시도하지 말고 계정 존재 여부를 확인해 주세요. ' + message,
+      })));
+      onProgress?.(results.length, [...results]);
+      // Do not silently continue after a connection error.
+      return results;
+    }
+    onProgress?.(results.length, [...results]);
+  }
+  return results;
 }
 export async function saveMemberPermissions(member: MemberRecord) {
-  await update({
+  await api<{ success: boolean }>('permissions', {
     uid: member.uid,
     role: member.role,
     handoverAccess: member.handoverAccess,
@@ -158,10 +198,6 @@ export function downloadCredentials(results: ImportResult[]) {
 }
 
 export function callError(error: unknown): string {
-  const code = (error as { code?: string })?.code ?? '';
-  if (code === 'functions/unauthenticated') return '로그인이 필요합니다. 다시 로그인해 주세요.';
-  if (code === 'functions/permission-denied') return '회원 관리 권한이 없습니다.';
-  if (code === 'functions/unavailable' || code === 'functions/not-found') return '서버 기능이 배포되지 않았거나 연결할 수 없습니다. Firebase Functions 배포를 확인해 주세요.';
-  const detail = (error as { message?: string })?.message;
-  return detail && detail.length < 220 ? detail : '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  const message = (error as { message?: string })?.message;
+  return message && message.length < 260 ? message : '요청을 처리하지 못했습니다. Cloudflare 설정과 연결을 확인해 주세요.';
 }
