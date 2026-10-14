@@ -1240,7 +1240,10 @@
   border-right: 1px solid rgba(40,90,60,.15);
 }
 .schedule-legend-swatches span:last-child { border-right: 0; }
+/* Let short timetables fit their content without moving the separate right-side filter panel. */
 .schedule-timetable-scroll {
+  width: max-content;
+  box-sizing: border-box;
   overflow-x: auto;
   overflow-y: visible;
   max-width: 100%;

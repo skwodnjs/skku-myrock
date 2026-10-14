@@ -156,7 +156,11 @@ test('hover and keyboard focus replace controls with available/unavailable parti
 });
 
 test('long date ranges scroll horizontally and full-day hours flow vertically', () => {
-  assert.match(source, /Math\.max\(720, 64 \+ dates\.length \* 86\)/);
+  assert.match(source, /const columns = \`64px repeat\(\$\{dates\.length\}, 70px\)\`;/);
+  assert.match(source, /width: 64 \+ dates\.length \* 70/);
+  assert.doesNotMatch(source, /Math\.max\(720, 64 \+ dates\.length \* 86\)/);
+  assert.match(styles, /\.schedule-timetable-scroll\s*\{[^}]*width:\s*max-content;[^}]*overflow-x:\s*auto;[^}]*max-width:\s*100%;/s);
+  assert.match(styles, /\.schedule-detail-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 240px;/s);
   assert.match(source, /height: slots\.length \* SLOT_HEIGHT/);
   assert.match(source, /const SLOT_HEIGHT = 20;/);
   assert.match(source, /className="schedule-timetable-scroll"/);
