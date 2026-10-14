@@ -92,3 +92,15 @@
 .password-form button{align-self:flex-start}
 .password-panel{grid-column:1/-1}
 @media(max-width:760px){.member-live-head{display:none}.member-live-row{grid-template-columns:1fr auto;gap:14px}.member-live-row>div:nth-child(3){grid-column:1;grid-row:2}.member-live-row>div:nth-child(2){grid-column:2;grid-row:1;text-align:right}.member-live-row button{grid-column:2;grid-row:2}.member-toolbar{align-items:stretch;flex-wrap:wrap}.member-toolbar .member-search{width:100%}.member-permission-form{padding:18px}.member-upload{padding:17px}}
+
+
+/* Cloudflare Pages: CSV import three-step flow */
+.member-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:22px 0 15px}
+.member-steps span{font-size:12px;color:#71817c;padding:11px 7px;background:#edf2ef;border:1px solid #dbe6e0;text-align:center;white-space:nowrap}
+.member-steps span.active{color:#096960;background:#e1f5ef;border-color:#66bbae;font-weight:750}
+.member-preview .member-upload-actions{justify-content:space-between;margin-top:14px}
+.member-result-counts{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}
+.member-result-counts>span{padding:9px 11px;border-radius:5px;border:1px solid #c5e5dc;background:#fff;font-weight:700;font-size:12px}
+.member-progress{margin:12px 0!important;color:#0e7667;font-size:12px;font-weight:700}
+.member-preview .member-preview-scroll{max-height:440px}
+@media(max-width:620px){.member-steps{gap:4px}.member-steps span{font-size:10px;padding:11px 2px}.member-preview .member-upload-actions{flex-direction:column;align-items:stretch}.member-preview .member-upload-actions>*{justify-content:center}}
