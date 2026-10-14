@@ -47,8 +47,9 @@ export function FinanceLanding({ onDonations, onExpenses }: { onDonations: Nav; 
         <LockKeyhole size={19} aria-hidden="true" />
         <div>
           <strong>이름을 공개하지 않고 후원할 수 있습니다.</strong>
-          <p>입금자명에 <b>홍길동(비공개)</b>와 같이 표시하거나 운영진에게 비공개를 요청해 주세요. 비공개로 처리된 후원은 모두에게 공개되는 <b>전체 후원 내역</b>에서 이름 대신 <b>익명</b>으로 표시할 예정입니다.</p>
-          <p>본인이 후원한 내역은 로그인 후 <b>내 후원 내역</b>에서 확인할 수 있도록 준비하고 있습니다. 실제 입금 내역을 계정과 연결하는 기능은 추후 후원 사실을 확인한 뒤 제공할 예정입니다.</p>
+          <p>특정 후원 내역에서 이름을 공개하고 싶지 않다면 입금자명을 <b>홍길동(비공개)</b>와 같이 작성하거나 운영진에게 해당 후원 건의 익명 처리를 요청해 주세요. 익명 처리된 후원은 <b>전체 후원 내역</b>에서 후원자 이름 대신 <b>익명</b>으로 표시됩니다.</p>
+          <p>본인이 후원한 <b>모든 내역</b>을 익명 처리하기를 희망하는 경우 운영진에게 문의해 주세요.</p>
+          <p>익명 처리 여부와 관계없이, 본인이 후원한 내역은 로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다.</p>
         </div>
       </div>
     </section>
@@ -123,7 +124,7 @@ export function DonationHistory({
         <FinanceSectionTitle title="내 후원 내역" description="로그인한 부원 본인의 후원 내역을 확인하는 공간입니다." />
         <div className="finance-personal-note" id="my-donations-heading">
           <LockKeyhole size={17} aria-hidden="true"/>
-          <span>전체 후원 내역에 익명으로 표시되는 후원도, 향후 본인 계정과 후원 사실이 확인되면 이곳에서 확인할 수 있도록 준비하고 있습니다.</span>
+          <span>개별 후원을 익명 처리하거나 모든 후원 내역을 익명 처리하더라도, 본인이 후원한 내역은 로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다.</span>
         </div>
         {authPending ? <FinanceEmpty title="로그인 상태 확인 중"
           description="본인 확인이 완료되면 내 후원 내역 영역을 보여드립니다." /> :
