@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateMembers, validatePermissions, toFields, docFields,
-  memberView, secureOrigin, ApiError,
+  memberView, secureOrigin, ApiError, initialPasswordForStudentId,
 } from '../functions/_lib/shared.js';
 import { onRequestPost as registerHandler } from '../functions/api/members/register.js';
 import { onRequestPost as permissionHandler } from '../functions/api/members/permissions.js';
@@ -79,4 +79,12 @@ test('Pages health route reports deployment and presence of encrypted binding on
     firebaseSecretConfigured: true,
   });
   assert.equal(JSON.stringify(data).includes('present'), false);
+});
+
+test('new account initial password matches the exact 10-digit student ID', () => {
+  assert.equal(initialPasswordForStudentId('2026300001'), '2026300001');
+  assert.equal(initialPasswordForStudentId('0123456789'), '0123456789');
+  assert.throws(() => initialPasswordForStudentId('202630001'), /10자리/);
+  assert.throws(() => initialPasswordForStudentId('20263000001'), /10자리/);
+  assert.throws(() => initialPasswordForStudentId('abcdef0123'), /10자리/);
 });
