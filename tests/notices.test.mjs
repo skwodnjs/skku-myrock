@@ -313,7 +313,7 @@ test('notice registration date heading and values share centered alignment', () 
   assert.match(styles, /\.notice-table-head>\.notice-date-cell,\.notice-table-row>\.notice-date-cell\{text-align:center\}/);
   assert.match(styles, /\.notice-table-row>\.notice-date-cell\{[^}]*text-align:right\}/);
   assert.ok(styles.lastIndexOf('.notice-table-head>.notice-date-cell,.notice-table-row>.notice-date-cell{text-align:center}') >
-    styles.lastIndexOf('.notice-table-row>.notice-date-cell{'), 'center alignment overrides the older right alignment');
+    styles.lastIndexOf(".notice-table-row>.notice-date-cell{font-family:"), 'center alignment overrides the older right alignment');
   assert.match(styles, /\.notice-table-head\.has-author,\.notice-table-row\.has-author/);
 });
 
