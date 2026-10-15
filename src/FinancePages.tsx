@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { getOwnDonations, getPublicDonations } from './donationApi';
 import { displayAmount, displayDate, sumDonationAmounts } from './donationData';
 import type { OwnDonation, PublicDonation } from './donationData';
+import { DEFAULT_ACCOUNT,formatTransactionDate,formatWon,readDonationAccount,readAccountForManagement,saveDonationAccount,readExpenses } from './financeTransactions';
+import type { DonationAccount, FinanceTransactionInput } from './financeTransactions';
 import { ArrowLeft, ArrowRight, ArrowUpRight, ClipboardList, HeartHandshake, LockKeyhole, Wallet } from 'lucide-react';
 
 type Nav = () => void;
@@ -20,7 +23,41 @@ function FinanceSectionTitle({ title, description }: { title: string; descriptio
   </div>;
 }
 
-export function FinanceLanding({ onDonations, onExpenses }: { onDonations: Nav; onExpenses: Nav }) {
+export function FinanceLanding({ onDonations, onExpenses, canEditAccount }: { onDonations: Nav; onExpenses: Nav; canEditAccount:boolean }) {
+  const [account,setAccount]=useState<DonationAccount>(DEFAULT_ACCOUNT);
+  const [editing,setEditing]=useState<DonationAccount|null>(null);
+  const [version,setVersion]=useState<string|null>(null);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    void readDonationAccount().then(data=>{if(active)setAccount(data.account);})
+      .catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'계좌 조회에 실패했습니다.');});
+    return()=>{active=false;};
+  },[]);
+  async function beginEdit(){
+    if(busy)return;
+    setBusy(true);setError('');
+    try{
+      const data=await readAccountForManagement();
+      setAccount({bank:data.account.bank,number:data.account.number,holder:data.account.holder});
+      setVersion(data.account.updateTime);
+      setEditing({bank:data.account.bank,number:data.account.number,holder:data.account.holder});
+    }catch(reason){setError(reason instanceof Error?reason.message:'수정 권한을 확인할 수 없습니다.');}
+    finally{setBusy(false);}
+  }
+  async function persistAccount(event:FormEvent){
+    event.preventDefault();
+    if(!editing||busy)return;
+    setBusy(true);setError('');
+    try{
+      const saved=await saveDonationAccount(editing,version);
+      setVersion(saved.account.updateTime);
+      setAccount({bank:saved.account.bank,number:saved.account.number,holder:saved.account.holder});
+      setEditing(null);
+    }catch(reason){setError(reason instanceof Error?reason.message:'계좌 정보 저장에 실패했습니다.');}
+    finally{setBusy(false);}
+  }
   return <>
     <FinanceHeading eyebrow="SUPPORT & FINANCE" title="후원 · 회계"
       description="모여락의 다음 무대를 함께 만들어 주시는 모든 분께 감사드립니다." />
@@ -34,16 +71,29 @@ export function FinanceLanding({ onDonations, onExpenses }: { onDonations: Nav; 
     </section>
 
     <section className="container section-block finance-donation-account">
-      <FinanceSectionTitle title="후원 계좌 안내" description="후원을 원하시는 분을 위한 계좌 안내입니다." />
+      <div className="finance-account-heading"><FinanceSectionTitle title="후원 계좌 안내" description="후원을 원하시는 분을 위한 계좌 안내입니다." />
+        {canEditAccount&&!editing&&<button type="button" className="outline-action" disabled={busy} onClick={()=>void beginEdit()}>정보 수정</button>}
+      </div>
+      {error&&<p className="form-error" role="alert">{error}</p>}
       <div className="finance-bank-card">
         <div className="finance-bank-card-header">
           <span className="finance-bank-eyebrow">DONATION ACCOUNT</span>
         </div>
-        <div className="finance-bank-fields">
-          <div><span>은행</span><strong>등록 예정</strong></div>
-          <div><span>계좌번호</span><strong>등록 예정</strong></div>
-          <div><span>예금주</span><strong>등록 예정</strong></div>
-        </div>
+        {editing?<form className="finance-account-form" onSubmit={event=>void persistAccount(event)}>
+          <div className="finance-bank-fields">
+            <label><span>은행</span><input required maxLength={35} value={editing.bank} onChange={e=>setEditing(p=>p?{...p,bank:e.target.value}:null)}/></label>
+            <label><span>계좌번호</span><input required pattern="[0-9-]{7,35}" value={editing.number} onChange={e=>setEditing(p=>p?{...p,number:e.target.value}:null)}/></label>
+            <label><span>예금주</span><input required maxLength={70} value={editing.holder} onChange={e=>setEditing(p=>p?{...p,holder:e.target.value}:null)}/></label>
+          </div>
+          <div className="finance-manager-actions finance-account-edit-actions">
+            <button type="submit" className="button button-primary" disabled={busy}>저장</button>
+            <button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing(null)}>취소</button>
+          </div>
+        </form>:<div className="finance-bank-fields">
+          <div><span>은행</span><strong>{account.bank}</strong></div>
+          <div><span>계좌번호</span><strong>{account.number}</strong></div>
+          <div><span>예금주</span><strong>{account.holder}</strong></div>
+        </div>}
       </div>
       <div className="finance-privacy-note">
         <LockKeyhole size={19} aria-hidden="true" />
@@ -147,10 +197,6 @@ export function DonationHistory({
       </section>
       <section className="finance-record-section" aria-labelledby="my-donations-heading">
         <FinanceSectionTitle title="내 후원 내역" description="로그인한 부원의 학번에 연결된 기록만 표시합니다." />
-        <div className="finance-personal-note" id="my-donations-heading">
-          <LockKeyhole size={17} aria-hidden="true"/>
-          <span>후원 기록이 익명으로 표시되어도 본인 학번으로 확인된 모든 내역을 조회할 수 있습니다.</span>
-        </div>
         {authPending?<FinanceEmpty title="로그인 상태 확인 중" description="본인 확인 후 내역을 불러옵니다."/>:
           loggedIn?<div className="finance-record-table">
             {mineLoaded&&!mineError&&<div className="finance-personal-total">
@@ -175,22 +221,39 @@ export function DonationHistory({
   </>;
 }
 
-export function ExpenseHistory({ onBack }: { onBack: Nav }) {
+export function ExpenseHistory({ onBack, canManageExpenses, onManage }: {
+  onBack:Nav;canManageExpenses:boolean;onManage:Nav;
+}) {
+  const [rows,setRows]=useState<Array<FinanceTransactionInput & {id:string}>>([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    void readExpenses().then(data=>{if(active)setRows(data.records);})
+      .catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'거래 내역 조회 실패');})
+      .finally(()=>{if(active)setLoading(false);});
+    return()=>{active=false;};
+  },[]);
   return <>
     <FinanceHeading eyebrow="CLUB EXPENSES" title="회비 집행 내역"
-      description="모여락의 동아리 회비가 어떻게 쓰이는지 확인하는 공간입니다." />
+      description="동아리 계좌의 입금·출금 거래 내역을 투명하게 공개합니다." />
     <div className="container finance-details-content">
-      <BackToFinance onBack={onBack} />
+      <BackToFinance onBack={onBack}/>
+      {canManageExpenses&&<div className="finance-manager-entry"><button type="button" className="button button-primary" onClick={onManage}>회비 집행 내역 관리 <ArrowRight size={15}/></button></div>}
       <section className="finance-record-section">
-        <FinanceSectionTitle title="회비 집행 기록" description="회비 사용 내역을 항목별로 투명하게 공유할 예정입니다." />
-        <div className="finance-record-table">
+        <FinanceSectionTitle title="회비 집행 기록" description="입금과 출금을 포함한 전체 거래 내역입니다."/>
+        <div className="finance-record-table finance-transaction-scroll">
           <div className="finance-record-table-header finance-expense-columns">
-            <span>집행일</span><span>사용 항목</span><span>상세 내용</span><span>금액</span>
+            <span>거래일시</span><span>거래구분</span><span>거래금액</span><span>거래 후 잔액</span><span>거래내용</span>
           </div>
-          <FinanceEmpty title="회비 집행 기록 연결 예정"
-            description="현재는 화면 구성 단계로, 실제 회비 집행 내역이나 금액을 표시하지 않습니다." />
+          {loading?<FinanceEmpty title="거래 내역 조회 중" description="거래 기록을 불러오고 있습니다."/>:
+            error?<FinanceEmpty title="거래 내역 조회 실패" description={error}/>:
+            rows.length===0?<FinanceEmpty title="등록된 회비 집행 내역이 없습니다" description="운영진이 거래 내역을 등록하면 이곳에 표시됩니다."/>:
+            rows.map(row=><div key={row.id} className="finance-record-row finance-expense-columns">
+              <span>{formatTransactionDate(row.dateTime)}</span><span>{row.type}</span>
+              <span>{formatWon(row.amount)}</span><span>{formatWon(row.balance)}</span><span>{row.description}</span>
+            </div>)}
         </div>
-        <p className="finance-record-footnote">추후 회비 집행 데이터가 연결되면 날짜, 사용 항목, 집행 사유와 금액을 확인할 수 있습니다.</p>
       </section>
       <div className="finance-detail-footer"><BackToFinance onBack={onBack}/></div>
     </div>

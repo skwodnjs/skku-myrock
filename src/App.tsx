@@ -18,6 +18,7 @@ import PasswordChange from './PasswordChange';
 import PhotoGallery from './PhotoGallery';
 import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
+import ExpenseManagement from './ExpenseManagement';
 import DonationManagement from './DonationManagement';
 import { purgeDonations } from './donationApi';
 import { findNotice, notices } from './noticesData';
@@ -25,7 +26,7 @@ import type { NoticePost } from './noticesData';
 import NoticeImageCarousel from './NoticeImageCarousel';
 import NoticeComposer from './NoticeComposer';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'expense-manage' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -49,7 +50,7 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'expense-manage' ? '/finance/expenses/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match && match[1] !== 'write' ? match[1] : null;
@@ -63,6 +64,7 @@ const pathToPage = (): Page => {
   if (noticeIdFromPath()) return 'notice-detail';
   if (scheduleIdFromPath()) return 'schedule-detail';
   if (/^\/finance\/donations\/manage\/?$/.test(window.location.pathname)) return 'donation-manage';
+  if (/^\/finance\/expenses\/manage\/?$/.test(window.location.pathname)) return 'expense-manage';
   if (/^\/finance\/donations\/?$/.test(window.location.pathname)) return 'donations';
   if (/^\/finance\/expenses\/?$/.test(window.location.pathname)) return 'expenses';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -389,7 +391,7 @@ function App() {
     return()=>{live=false;unsub();};
   },[]);
   useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());setActiveScheduleId(scheduleIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
+  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expense-manage' ? '회비 집행 내역 관리' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -498,10 +500,11 @@ function App() {
 
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
-      {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')}/>}
+      {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')} canEditAccount={Boolean(user&&!authPending&&currentLevel==='president')}/>}
       {page==='donations'&&<DonationHistory key={financeRevision} onBack={() => navigate('finance')} loggedIn={Boolean(user)} authPending={authPending} onLogin={showLogin} canManageDonations={Boolean(!authPending&&user&&canManageDonations)} onManage={()=>navigate('donation-manage')}/>}
       {page==='donation-manage'&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태 확인 중입니다."/></section>:user&&canManageDonations?<DonationManagement onBack={()=>navigate('donations')}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="후원 내역 관리는 실무단 이상만 가능합니다."/></section>)}
-      {page==='expenses'&&<ExpenseHistory onBack={() => navigate('finance')}/>}
+      {page==='expenses'&&<ExpenseHistory onBack={() => navigate('finance')} canManageExpenses={Boolean(user&&!authPending&&canManageDonations)} onManage={()=>navigate('expense-manage')}/>}
+      {page==='expense-manage'&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다."/></section>:user&&canManageDonations?<ExpenseManagement onBack={()=>navigate('expenses')}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="회비 집행 내역 관리는 실무단 이상만 가능합니다."/></section>)}
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
       {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager key={rosterRevision} currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
     </main>

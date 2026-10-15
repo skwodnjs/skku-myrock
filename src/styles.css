@@ -1613,3 +1613,40 @@
 .finance-manager-anonymous-value small{font-size:11px;color:#738a7a}
 .finance-manager-anonymous-value strong{font-size:13px;overflow-wrap:anywhere;font-weight:600}
 @media(max-width:700px){.finance-personal-total{padding:17px 13px}.finance-personal-total strong{font-size:18px}}
+
+
+/* Inline donation and transaction editing */
+.finance-inline-edit{background:#f4faf5}
+.finance-inline-edit td{vertical-align:middle}
+.finance-inline-edit input,.finance-inline-edit select,.finance-inline-fields input,.finance-inline-fields select{
+  box-sizing:border-box;width:100%;min-width:0;height:35px;border:1px solid #b9d0be;
+  background:#fff;border-radius:3px;padding:4px 7px;color:var(--ink);font-size:12px}
+.finance-inline-edit input:focus,.finance-inline-edit select:focus,
+.finance-inline-fields input:focus,.finance-inline-fields select:focus{outline:2px solid #7caa8e;outline-offset:1px}
+.finance-row-actions{white-space:nowrap}
+.finance-row-actions button{display:inline-flex;align-items:center;justify-content:center;gap:4px;margin:2px 4px 2px 0}
+.finance-inline-add-form{padding:11px 7px}
+.finance-inline-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.finance-inline-fields label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#60796a}
+.finance-inline-fields input,.finance-inline-fields select{height:39px}
+.finance-transactions-admin{min-width:980px}
+.finance-transactions-admin td:nth-child(4){font-variant-numeric:tabular-nums}
+.finance-transaction-scroll{overflow-x:auto}
+.finance-transaction-scroll>.finance-expense-columns{min-width:775px}
+.finance-expense-columns{grid-template-columns:1.3fr .65fr .9fr 1fr 1.65fr}
+.finance-transaction-scroll .finance-record-table-header>span:last-child,.finance-transaction-scroll .finance-record-row>span:last-child{text-align:left}
+.finance-account-heading{display:flex;align-items:start;justify-content:space-between;gap:16px}
+.finance-account-heading .section-heading{flex:1;margin-bottom:23px}
+.finance-account-heading>.outline-action{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.finance-account-form{width:100%}
+.finance-account-form .finance-bank-fields label{display:flex;flex-direction:column;min-width:0}
+.finance-account-form .finance-bank-fields input{box-sizing:border-box;width:100%;height:43px;
+  padding:8px 10px;border:1px solid #b8cbbd;color:var(--ink);background:#fff;font-size:15px}
+.finance-account-edit-actions{justify-content:flex-end;margin-top:18px}
+@media(max-width:700px){
+ .finance-inline-fields{grid-template-columns:1fr 1fr}
+ .finance-account-heading{align-items:center}
+ .finance-account-heading .section-heading{margin-bottom:19px}
+ .finance-account-heading>.outline-action{font-size:11px;padding:8px 10px}
+}
+@media(max-width:420px){.finance-inline-fields{grid-template-columns:1fr}}

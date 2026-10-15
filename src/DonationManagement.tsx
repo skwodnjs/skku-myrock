@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
+import type { ChangeEvent } from 'react';
 import { ArrowLeft, Download, Plus, Save, Upload } from 'lucide-react';
 import { getDonationManagement, importDonations, saveDonation, saveAnonymousPeople } from './donationApi';
 import type { ManageData } from './donationApi';
@@ -39,8 +39,8 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   function updateRow(field:keyof DonationInput,value:string) {
     setEditing(previous=>previous?{...previous,row:{...previous.row,[field]:value}}:null);
   }
-  async function persist(event:FormEvent) {
-    event.preventDefault();if(!editing||busy)return;
+  async function persist() {
+    if(!editing||busy)return;
     setError('');setMessage('');
     try {
       const valid=validateDonation(editing.row);
@@ -104,7 +104,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
         <section className="finance-manager-section">
           <div className="finance-manager-heading"><div><h2>후원 기록</h2><p>내부 기록에는 익명 처리된 후원자의 원본 이름과 학번도 보관됩니다.</p></div>
             <div className="finance-manager-actions">
-              <button className="outline-action" type="button" onClick={()=>setEditing({row:{...EMPTY_DONATION}})} disabled={busy}><Plus size={15}/> 개별 추가</button>
+              <button className="outline-action" type="button" onClick={()=>setEditing({row:{...EMPTY_DONATION}})} disabled={busy||Boolean(editing)}><Plus size={15}/> 개별 추가</button>
               <button className="outline-action" type="button" onClick={downloadCsv}><Download size={15}/> 전체 내역 CSV 다운로드</button>
             </div>
           </div>
@@ -118,8 +118,8 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
               <button type="button" className="outline-action" disabled={busy} onClick={()=>setCsvRows([])}>취소</button>
             </div>}
           </div>
-          {editing&&<form className="finance-manager-edit" onSubmit={event=>void persist(event)}>
-            <h3>{editing.id?'후원 기록 수정':'후원 기록 추가'}</h3>
+          {editing&&!editing.id&&<form className="finance-manager-edit" onSubmit={event=>{event.preventDefault();void persist();}}>
+            <h3>후원 기록 추가</h3>
             <div className="finance-manager-edit-grid">
               <label>후원일<input type="date" value={editing.row.date} required onChange={event=>updateRow('date',event.target.value)}/></label>
               <label>후원자명 (빈칸 가능)<input value={editing.row.donorName} maxLength={80} onChange={event=>updateRow('donorName',event.target.value)}/></label>
@@ -136,12 +136,25 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           </form>}
           <div className="finance-manager-table-wrap">
             <table className="finance-manager-table"><thead><tr><th>후원일</th><th>후원자명</th><th>학번</th><th>후원금액</th><th>익명</th><th>관리</th></tr></thead>
-              <tbody>{data.records.length?data.records.map((record:DonationRecord)=><tr key={record.id}>
-                <td>{displayDate(record.date)}</td><td>{record.donorName||'미확인'}</td><td>{record.studentId||'미확인'}</td>
-                <td>{displayAmount(record.amount)}</td><td>{record.anonymous}</td>
-                <td><button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing({id:record.id,updateTime:record.updateTime,row:{
-                  date:record.date,donorName:record.donorName,studentId:record.studentId,amount:record.amount,anonymous:record.anonymous}})}>수정</button></td>
-              </tr>):<tr><td colSpan={6}>아직 등록된 후원 기록이 없습니다.</td></tr>}</tbody>
+              <tbody>{data.records.length?data.records.map((record:DonationRecord)=>
+                editing?.id===record.id?
+                  <tr key={record.id} className="finance-inline-edit">
+                    <td><input type="date" aria-label="후원일 수정" required value={editing.row.date} disabled={busy} onChange={e=>updateRow('date',e.target.value)}/></td>
+                    <td><input aria-label="후원자명 수정" maxLength={80} value={editing.row.donorName} disabled={busy} onChange={e=>updateRow('donorName',e.target.value)}/></td>
+                    <td><input aria-label="학번 수정" maxLength={10} inputMode="numeric" value={editing.row.studentId} disabled={busy} onChange={e=>updateRow('studentId',e.target.value)}/></td>
+                    <td><input aria-label="후원금액 수정" required inputMode="numeric" value={editing.row.amount} disabled={busy} onChange={e=>updateRow('amount',e.target.value)}/></td>
+                    <td><select aria-label="익명여부 수정" value={editing.row.anonymous} disabled={busy} onChange={e=>updateRow('anonymous',e.target.value)}>
+                      <option value="x">x</option><option value="o">o</option>
+                    </select></td>
+                    <td className="finance-row-actions"><button type="button" className="outline-action" disabled={busy} onClick={()=>void persist()}><Save size={13}/> 저장</button>
+                      <button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing(null)}>취소</button></td>
+                  </tr>:
+                  <tr key={record.id}>
+                    <td>{displayDate(record.date)}</td><td>{record.donorName||'미확인'}</td><td>{record.studentId||'미확인'}</td>
+                    <td>{displayAmount(record.amount)}</td><td>{record.anonymous}</td>
+                    <td><button type="button" className="outline-action" disabled={busy||Boolean(editing)} onClick={()=>setEditing({id:record.id,updateTime:record.updateTime,row:{
+                      date:record.date,donorName:record.donorName,studentId:record.studentId,amount:record.amount,anonymous:record.anonymous}})}>수정</button></td>
+                  </tr>):<tr><td colSpan={6}>아직 등록된 후원 기록이 없습니다.</td></tr>}</tbody>
             </table>
           </div>
         </section>
