@@ -1534,3 +1534,20 @@
 /* Keep the narrower numeric inputs readable without browser spinner chrome. */
 .notice-composer-dimensions input[type=number]{appearance:textfield;-moz-appearance:textfield}
 .notice-composer-dimensions input[type=number]::-webkit-inner-spin-button,.notice-composer-dimensions input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+
+
+/* Image filenames: keep ordinal and filename separate; ellipsize long filenames on all screens. */
+.notice-composer-gallery-file-label{display:flex;align-items:center;gap:5px;flex:1;min-width:0;overflow:hidden}
+.notice-composer-gallery-image-number{flex:0 0 auto;white-space:nowrap}
+.notice-composer-gallery-filename{display:block;flex:1;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Notice list date must retain its typography when the manager-only author column is added. */
+.notice-table-row>.notice-date-cell{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:400;line-height:1.6;font-variant-numeric:tabular-nums;letter-spacing:0;color:#a4afab;white-space:nowrap;text-align:right}
+
+@media(max-width:700px){
+  .notice-composer-dimensions input{height:28px;min-height:28px;padding-block:0}
+  .notice-composer-ratio-toggle{width:28px;height:28px;min-height:28px}
+  .notice-composer-original-size{height:28px;min-height:28px;padding-inline:8px}
+  .notice-composer-gallery-file-label{flex-direction:column;align-items:flex-start;gap:1px}
+  .notice-composer-gallery-filename{flex:none;width:100%}
+}
