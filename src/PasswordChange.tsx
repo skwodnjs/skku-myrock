@@ -38,7 +38,7 @@ export default function PasswordChange({ user }: { user: User }) {
     finally { setBusy(false); }
   }
 
-  return <div className="profile-panel password-panel">
+  return <div className="profile-panel password-panel" data-async-busy={busy ? "true" : undefined}>
     <div className="profile-title"><KeyRound size={20}/><h2>비밀번호 변경</h2></div>
     <p className="profile-help">현재 비밀번호로 재인증한 다음 원하는 비밀번호로 변경할 수 있습니다. 이 사이트는 별도의 형식 제한을 두지 않지만 Firebase 자체 제한(기본 최소 6자)은 적용됩니다.</p>
     <form onSubmit={event => void submit(event)} className="password-form">
