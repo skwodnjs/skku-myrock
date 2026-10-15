@@ -14,7 +14,7 @@ export async function onRequestPost({ request, env }) {
       uri.searchParams.append('updateMask.fieldPaths', name);
     }
     uri.searchParams.set('currentDocument.updateTime', expectedUpdateTime);
-    const fields = toFields({ role, handoverAccess });
+    const fields = toFields({ role, handoverAccess: role === 'member' && handoverAccess });
     fields.updatedAt = { timestampValue: new Date().toISOString() };
     const result = await googleRequest(env, uri.toString(), { method: 'PATCH', body: { fields } });
     if (result.status === 409 || result.status === 412) reject('다른 관리자가 부원 정보를 수정했습니다. 새로고침 후 다시 시도해 주세요.', 409);

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { toFields, docFields } from '../functions/_lib/shared.js';
@@ -174,6 +175,11 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
       uid,role:'part_leader',handoverAccess:true,expectedUpdateTime:docs.get(uid).updateTime,
     }),env})).status,200);
     assert.equal(docFields(docs.get(uid)).role,'part_leader');
+    assert.equal(docFields(docs.get(uid)).handoverAccess,false, 'non-members do not retain the OB-only flag');
+    assert.equal((await permissions({request:post('president','permissions',{
+      uid,role:'member',handoverAccess:true,expectedUpdateTime:docs.get(uid).updateTime,
+    }),env})).status,200);
+    assert.equal(docFields(docs.get(uid)).handoverAccess,true);
     assert.equal((await resetPassword({request:post('president','reset-password',{uid}),env})).status,200);
     assert.equal(lastResetPassword,'2026300002');
     assert.equal((await deleteMember({request:post('president','delete',{
@@ -206,4 +212,14 @@ test('signed tokens enforce role hierarchy through real handlers and Auth/Firest
   } finally {
     globalThis.fetch = previousFetch;
   }
+});
+
+
+test('handover checkbox is only shown for a selected general member', async () => {
+  const component = await readFile(new URL('../src/MemberManager.tsx', import.meta.url), 'utf8');
+  assert.match(component, /\{editing\.role === 'member' && <label className="member-handover-check"/);
+  assert.match(component, /인수인계 내용 접근 권한 설정/);
+  assert.match(component, /권한에 'OB 운영진'이라고 표시됩니다/);
+  assert.doesNotMatch(component, /OB 운영진 · 인수인계 접근/);
+  assert.match(component, /handoverAccess: updated\.role === 'member' && updated\.handoverAccess/);
 });
