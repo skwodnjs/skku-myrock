@@ -258,10 +258,10 @@ function NoticeDetail({ notice, canViewAuthor, backToList }: { notice: NoticePos
 }
 
 
-function Gallery({ notify }: { notify: Notify }) {
+function Gallery({ canRegister }: { canRegister: boolean }) {
   return <>
     <PageHeading tag="PHOTO ARCHIVE" title="포토존" description="공연부터 일상까지, 모여락의 순간들을 모아두는 공간입니다." />
-    <PhotoGallery onRegister={() => notify('사진 등록 기능은 추후 연결될 예정입니다. 현재는 앨범별 사진 뷰어를 이용할 수 있습니다.')} />
+    <PhotoGallery canRegister={canRegister} />
   </>;
 }
 
@@ -505,7 +505,7 @@ function App() {
       />}
       {page==='schedule-detail'&&<ScheduleDetail schedule={findSchedule(activeScheduleId ?? '')} onBack={() => navigate('schedule')}/>}
 
-      {page==='gallery'&&<Gallery notify={notify}/>}
+      {page==='gallery'&&<Gallery canRegister={Boolean(user && !authPending && currentLevel)} />}
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')} canEditAccount={Boolean(user&&!authPending&&currentLevel==='president')}/>}
       {page==='donations'&&<DonationHistory key={financeRevision} onBack={() => navigate('finance')} loggedIn={Boolean(user)} authPending={authPending} onLogin={showLogin} canManageDonations={Boolean(!authPending&&user&&canManageDonations)} onManage={()=>navigate('donation-manage')}/>}
