@@ -55,7 +55,7 @@ test('finance management uses separate protected route, not the public list', ()
   assert.match(app, /page === 'donation-manage' \? '\/finance\/donations\/manage'/);
   assert.match(app, /return 'donation-manage'/);
   assert.match(app, /canManageDonations=currentLevel==='staff'\|\|currentLevel==='president'/);
-  assert.match(app, /<DonationManagement onBack=\{\(\) => navigate\('donations'\)\}/);
+  assert.match(app, /<DonationManagement onBack=\{\(\)=>navigate\('donations'\)\}/);
   assert.match(app, /window\.addEventListener\('popstate',onPop\)/);
   assert.match(app, /<FinanceLanding onDonations=\{\(\) => navigate\('donations'\)\} onExpenses=\{\(\) => navigate\('expenses'\)\}\/>/);
   assert.match(app, /<ExpenseHistory onBack=\{\(\) => navigate\('finance'\)\}\/>/);
