@@ -8,6 +8,11 @@ import { onRequestGet as publicGet } from '../functions/api/donations/public.js'
 import { onRequestGet as mineGet } from '../functions/api/donations/mine.js';
 import { onRequestGet as manageGet,onRequestPost as managePost } from '../functions/api/donations/manage.js';
 import { onRequestPost as purgePost, DONATIONS_RESET_CONFIRMATION } from '../functions/api/donations/purge.js';
+import { normalizeAccount,normalizeTransaction,DEFAULT_ACCOUNT } from '../functions/_lib/financeTransactions.js';
+import { onRequestGet as accountGet,onRequestPost as accountPost } from '../functions/api/finance/account.js';
+import { onRequestGet as accountManageGet } from '../functions/api/finance/account-manage.js';
+import { onRequestGet as expensesGet } from '../functions/api/finance/expenses.js';
+import { onRequestGet as expensesManageGet,onRequestPost as expensesManagePost } from '../functions/api/finance/expenses-manage.js';
 
 test('CSV semantics: only o is anonymous; unrecognized identifiers and same-name people are handled safely', () => {
   const sample={date:'2026-10-04',donorName:'홍길동',studentId:'2026300001',amount:'10000',anonymous:'o'};
@@ -48,6 +53,17 @@ test('CSV file parsing supports optional names and student IDs and safe re-expor
   assert.equal(donationDateRange([]),null);
   assert.throws(()=>parseDonationCsv('후원일,이름\n2026-01-01,홍길동'),/헤더/);
   assert.throws(()=>parseDonationCsv('후원일,후원자명,학번,후원금액,익명여부\n2026-01-01,홍길동,2,1000,x'),/학번/);
+});
+test('transaction records validate complete bank activity and the requested default account',()=>{
+  assert.deepEqual(DEFAULT_ACCOUNT,{bank:'농협',number:'302-0000-0000-31',holder:'나재원'});
+  assert.deepEqual(normalizeAccount(DEFAULT_ACCOUNT),DEFAULT_ACCOUNT);
+  const transaction={dateTime:'2026-10-15T12:30',type:'출금',amount:'10000',balance:'50000',description:'동아리 장비'};
+  assert.deepEqual(normalizeTransaction(transaction),transaction);
+  assert.throws(()=>normalizeTransaction({...transaction,dateTime:'2026-02-30T12:30'}),/거래일시/);
+  assert.throws(()=>normalizeTransaction({...transaction,type:'수익'}),/거래구분/);
+  assert.throws(()=>normalizeTransaction({...transaction,amount:'-10000'}),/거래금액/);
+  assert.throws(()=>normalizeTransaction({...transaction,balance:'-100'}),/잔액/);
+  assert.throws(()=>normalizeTransaction({...transaction,description:''}),/거래내용/);
 });
 test('private profile checks, role matrix, database writes and superadmin finance reset are enforced by real handlers',async()=>{
   if(!globalThis.crypto)globalThis.crypto=webcrypto;
@@ -106,6 +122,10 @@ test('private profile checks, role matrix, database writes and superadmin financ
         docs.set(key,{name:key,fields:data.fields,updateTime:now()});return response(docs.get(key));
       }
       if(options.method==='DELETE'){docs.delete(key);return response({});}
+      if(docPath==='/expenseTransactions'){
+        const found=[...docs.values()].filter(doc=>doc.name.startsWith(root+'/expenseTransactions/'));
+        return response({documents:found});
+      }
       if(docPath==='/donations'){
         const found=[...docs.values()].filter(doc=>doc.name.startsWith(root+'/donations/'));
         return response({documents:found});
@@ -142,6 +162,38 @@ test('private profile checks, role matrix, database writes and superadmin financ
     }]}),env});
     assert.equal(imported.status,200);
     assert.equal([...docs.values()].filter(doc=>doc.name.startsWith(root+'/donations/')).length,recordsBefore+1);
+    const financeRequest=(as,path,body)=>new Request('https://skku-myrock.pages.dev/api/finance/'+path,{
+      method:body?'POST':'GET',headers:{...(body?{'content-type':'application/json'}:{}),
+        ...(as?{authorization:'Bearer '+token[as]}:{})},body:body?JSON.stringify(body):undefined
+    });
+    const bank=await accountGet({request:financeRequest(null,'account'),env});
+    assert.equal(bank.status,200);
+    assert.deepEqual((await bank.json()).account,DEFAULT_ACCOUNT);
+    assert.equal((await accountManageGet({request:financeRequest('staff','account-manage'),env})).status,403);
+    assert.equal((await accountPost({request:financeRequest('staff','account',{account:{bank:'농협',number:'302-0000-0000-31',holder:'나재원'},expectedUpdateTime:null}),env})).status,403);
+    const changedAccount=await accountPost({request:financeRequest('super','account',{account:{bank:'농협',number:'302-0000-0000-31',holder:'나재원'},expectedUpdateTime:null}),env});
+    assert.equal(changedAccount.status,200);
+    assert.equal((await accountManageGet({request:financeRequest('super','account-manage'),env})).status,200);
+    const bankVersion=(await changedAccount.json()).account.updateTime;
+    assert.equal((await accountPost({request:financeRequest('super','account',{account:DEFAULT_ACCOUNT,expectedUpdateTime:'2026-10-15T00:00:01Z'}),env})).status,409);
+    assert.equal((await accountPost({request:financeRequest('super','account',{account:DEFAULT_ACCOUNT,expectedUpdateTime:bankVersion}),env})).status,200);
+    assert.equal((await expensesManageGet({request:financeRequest('member','expenses-manage'),env})).status,403);
+    assert.equal((await expensesManageGet({request:financeRequest('staff','expenses-manage'),env})).status,200);
+    const transaction={dateTime:'2026-10-15T12:30',type:'출금',amount:'10000',balance:'50000',description:'합주실 대여'};
+    assert.equal((await expensesManagePost({request:financeRequest('member','expenses-manage',{action:'save',record:transaction}),env})).status,403);
+    const expenseSaved=await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'save',record:transaction}),env});
+    assert.equal(expenseSaved.status,200);
+    const savedExpense=(await expenseSaved.json()).record;
+    const publicExpenses=await expensesGet({request:financeRequest(null,'expenses'),env});
+    assert.equal(publicExpenses.status,200);
+    assert.equal((await publicExpenses.json()).records.length,1);
+    assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'upload',rows:[]}),env})).status,400);
+    assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'save',
+      id:savedExpense.id,expectedUpdateTime:'2026-10-15T00:00:01Z',record:transaction}),env})).status,409);
+    const editedExpense=await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'save',
+      id:savedExpense.id,expectedUpdateTime:savedExpense.updateTime,record:{...transaction,description:'드럼 수리'}}),env});
+    assert.equal(editedExpense.status,200);
+    assert.equal((await editedExpense.json()).record.description,'드럼 수리');
     assert.equal((await purgePost({request:request('staff','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env})).status,403);
     assert.equal((await purgePost({request:request('super','purge',{confirmation:'잘못된 확인'}),env})).status,400);
     const reset=await purgePost({request:request('super','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env});
