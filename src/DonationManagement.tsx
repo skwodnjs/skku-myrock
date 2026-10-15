@@ -28,9 +28,8 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     setPeopleMessage('');
   }
   const csvRange=donationDateRange(csvRows);
-  function isSavedPerson(person:AnonymousPerson) {
-    return Boolean(person.donorName.trim() && /^\d{10}$/.test(person.studentId) &&
-      data?.people.some(saved=>saved.donorName===person.donorName && saved.studentId===person.studentId));
+  function isSavedPerson(index:number) {
+    return Boolean(data && index < data.people.length);
   }
   async function refresh() {
     const result=await getDonationManagement();
@@ -189,7 +188,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           <div className="finance-manager-anonymous-list">
             {people.length===0&&<p>익명자 명단이 비어 있습니다.</p>}
             {people.map((person,index)=><div key={index} className={pendingExclusions.includes(index)?'finance-manager-anonymous-row is-pending-removal':'finance-manager-anonymous-row'}>
-              {isSavedPerson(person)?<>
+              {isSavedPerson(index)?<>
                 <span className="finance-manager-anonymous-value"><small>이름</small><strong>{person.donorName}</strong></span>
                 <span className="finance-manager-anonymous-value"><small>학번</small><strong>{person.studentId}</strong></span>
               </>:<>
@@ -197,14 +196,14 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
                 <label>학번<input required disabled={busy||pendingExclusions.includes(index)} pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));markPeopleChanged();}}/></label>
               </>}
               <button type="button" className="outline-action" disabled={busy} onClick={()=>{
-                if(!isSavedPerson(person)){
+                if(!isSavedPerson(index)){
                   setPeople(previous=>previous.filter((_,i)=>i!==index));
                   setPendingExclusions(previous=>previous.filter(i=>i!==index).map(i=>i>index?i-1:i));
                 }else{
                   setPendingExclusions(previous=>previous.includes(index)?previous.filter(i=>i!==index):[...previous,index]);
                 }
                 markPeopleChanged();
-              }}>{!isSavedPerson(person)?'삭제':pendingExclusions.includes(index)?'제외 취소':'제외'}</button>
+              }}>{!isSavedPerson(index)?'삭제':pendingExclusions.includes(index)?'제외 취소':'제외'}</button>
             </div>)}
           </div>
           <div className="finance-manager-people-save">
