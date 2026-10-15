@@ -153,6 +153,18 @@ test('image editor accepts px dimensions, defaults to locked ratio and allows in
   }
   assert.match(styles, /\.notice-composer-dimensions\s*\{/);
   assert.match(styles, /\.notice-composer-ratio-toggle\s*\{/);
-  assert.match(styles, /\.notice-composer-image-stage img,\.notice-composer-preview-image img\{[^}]*max-height:none;/);
+  assert.match(styles, /\.notice-composer-image-stage>\.notice-composer-resized-image,\.notice-composer-preview-image>\.notice-composer-resized-image\{[^}]*max-height:none;/);
   assert.doesNotMatch(component, /uploadBytes|uploadString|addDoc|setDoc/);
+});
+
+
+test('editor and preview size selected images with the same viewport-responsive aspect ratio', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.equal(composer.split('width: block.width || 320').length - 1, 2);
+  assert.equal(composer.split('aspectRatio: block.width && block.height ?').length - 1, 2);
+  assert.equal(composer.split(": '4 / 3'").length - 1, 2);
+  assert.equal(composer.split('className="notice-composer-resized-image"').length - 1, 2);
+  assert.match(styles, /\.notice-composer-image-stage,\.notice-composer-preview-image\{[^}]*position:relative;[^}]*max-width:100%;[^}]*overflow:hidden/);
+  assert.match(styles, /\.notice-composer-image-stage>\.notice-composer-resized-image,\.notice-composer-preview-image>\.notice-composer-resized-image\{[^}]*position:absolute;inset:0;[^}]*width:100%;height:100%;[^}]*max-height:none;[^}]*object-fit:fill/);
+  assert.match(styles, /\.notice-composer-image img\s*\{[^}]*max-height:\s*440px;/s);
 });

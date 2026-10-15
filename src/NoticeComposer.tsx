@@ -98,8 +98,8 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
         {blocks.map(block => block.kind === 'text'
           ? <p key={block.id}>{block.text || ' '}</p>
           : <div key={block.id} className="notice-composer-preview-image"
-              style={{ width: block.width || undefined, aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : undefined }}>
-              <img src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
+              style={{ width: block.width || 320, aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : '4 / 3' }}>
+              <img className="notice-composer-resized-image" src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
             </div>)}
       </div> : <div className="notice-composer-blocks">
         {blocks.map((block, index) => <div key={block.id} className="notice-composer-block">
@@ -116,10 +116,10 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
               onChange={event => changeText(block.id, event.target.value)}/> :
             <div className="notice-composer-image">
               <div className="notice-composer-image-stage" style={{
-                width: block.width || undefined,
-                aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : undefined,
+                width: block.width || 320,
+                aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : '4 / 3',
               }}>
-                <img src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
+                <img className="notice-composer-resized-image" src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
               </div>
               <div className="notice-composer-dimensions" role="group" aria-label={`이미지 ${index + 1} 크기 조절`}>
                 <label>W
