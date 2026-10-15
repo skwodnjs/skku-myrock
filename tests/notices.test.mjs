@@ -125,3 +125,33 @@ test('plain notice composer supports editable title, text blocks and inserted im
   assert.match(styles, /\.notice-composer-blocks\s*\{/);
   assert.match(styles, /\.notice-composer-preview\s*\{/);
 });
+
+
+test('hardcoded notice authors are two each and only visible to permitted members', () => {
+  assert.deepEqual(notices.map(post => post.author), ['나재원', '나재원', '김서연', '김서연']);
+  assert.match(app, /canWrite && <span className="notice-author-cell">작성자<\/span>/);
+  assert.match(app, /canWrite && <span className="notice-author-cell">\{post\.author\}<\/span>/);
+  assert.match(app, /canViewAuthor && <span>작성자 \{notice\.author\}<\/span>/);
+  assert.match(app, /canViewAuthor=\{Boolean\(user && !authPending && currentLevel\)\}/);
+  assert.match(styles, /\.notice-table-head\.has-author,\.notice-table-row\.has-author\{grid-template-columns:90px minmax\(0,1fr\) 100px 90px\}/);
+});
+test('image editor accepts px dimensions, defaults to locked ratio and allows independent sizing when unlocked', async () => {
+  const component = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../src/noticeImageSize.ts', import.meta.url), 'utf8');
+  const js = typescript.transpileModule(source, {compilerOptions: {module: typescript.ModuleKind.ESNext, target: typescript.ScriptTarget.ES2022}}).outputText;
+  const { initialImageDimensions, resizeImageDimensions } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  assert.deepEqual(initialImageDimensions(1600, 800), {width: 800, height: 400});
+  assert.deepEqual(initialImageDimensions(600, 1200), {width: 450, height: 900});
+  assert.deepEqual(resizeImageDimensions({width: 800, height: 400}, 'width', 400, true), {width: 400, height: 200});
+  assert.deepEqual(resizeImageDimensions({width: 800, height: 400}, 'height', 300, true), {width: 600, height: 300});
+  assert.deepEqual(resizeImageDimensions({width: 800, height: 400}, 'width', 500, false), {width: 500, height: 400});
+  assert.deepEqual(resizeImageDimensions({width: 800, height: 400}, 'height', 275, false), {width: 800, height: 275});
+  assert.deepEqual(resizeImageDimensions({width: 800, height: 400}, 'width', 0, true), {width: 800, height: 400});
+  for (const part of ['ratioLocked: true', 'ratioLocked: !block.ratioLocked', 'type="number"', 'value={block.width', 'value={block.height',
+    'changeImageSize(block.id', 'role="group"', 'aria-pressed={block.ratioLocked}', '<Link size={19}', '<Link2Off size={19}', 'initialImageDimensions', 'aspectRatio:', 'onLoad={event => setNaturalSize']) {
+    assert.ok(component.includes(part), 'Image sizing missing: ' + part);
+  }
+  assert.match(styles, /\.notice-composer-dimensions\s*\{/);
+  assert.match(styles, /\.notice-composer-ratio-toggle\s*\{/);
+  assert.doesNotMatch(component, /uploadBytes|uploadString|addDoc|setDoc/);
+});
