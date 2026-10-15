@@ -53,7 +53,7 @@ export async function appendLedgerBatch(env, rows) {
   if (!Array.isArray(rows) || rows.length < 1 || rows.length > 40) reject('CSV는 한 번에 최대 40건씩 등록할 수 있습니다.');
   const writes = rows.map(raw => {
     const row = normalizeDonation(raw);
-    return {update:{name:LEDGER + '/' + crypto.randomUUID(),fields:toFields(donationFields(row))},
+    return {update:{name:LEDGER.replace('https://firestore.googleapis.com/v1/','') + '/' + crypto.randomUUID(),fields:toFields(donationFields(row))},
       currentDocument:{exists:false}};
   });
   const response = await googleRequest(env,FIRESTORE_ROOT + ':commit',{method:'POST',body:{writes}});
