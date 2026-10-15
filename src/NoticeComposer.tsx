@@ -22,6 +22,9 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   const objectUrls = useRef<string[]>([]);
   const draggingSlide = useRef<{ groupId: number; imageId: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
+  const [newImagePickerOpen,setNewImagePickerOpen]=useState(false);
+  const [slidePickerId,setSlidePickerId]=useState<number|null>(null);
+  const [pickerUrl,setPickerUrl]=useState('');
 
   useEffect(() => () => { objectUrls.current.forEach(url => URL.revokeObjectURL(url)); }, []);
 
@@ -72,7 +75,76 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     }
     setError('');
     setPreview(false);
+    setNewImagePickerOpen(false);
+    setSlidePickerId(null);
+    setPickerUrl('');
     event.target.value = '';
+  }
+  function toggleImagePicker(targetBlockId?:number) {
+    const alreadyOpen=targetBlockId===undefined?newImagePickerOpen:slidePickerId===targetBlockId;
+    setNewImagePickerOpen(targetBlockId===undefined?!alreadyOpen:false);
+    setSlidePickerId(targetBlockId===undefined?null:alreadyOpen?null:targetBlockId);
+    setPickerUrl('');
+    setError('');
+    setPreview(false);
+  }
+  function addUrlImage(targetBlockId?:number) {
+    const input=pickerUrl.trim();
+    let parsed:URL;
+    try {
+      parsed=new URL(input);
+      if(!['https:','http:'].includes(parsed.protocol)||parsed.username||parsed.password)throw Error('bad protocol');
+    }catch{
+      setError('이미지 URL은 http:// 또는 https://로 시작하는 올바른 주소여야 합니다.');
+      return;
+    }
+    const target=targetBlockId===undefined?null:blocks.find(block=>block.id===targetBlockId);
+    if(targetBlockId!==undefined&&(!target||target.kind==='text')){
+      setError('사진을 추가할 슬라이드를 찾을 수 없습니다.');return;
+    }
+    if(target?.kind==='gallery'&&target.images.length>=20){
+      setError('한 슬라이드에는 최대 20장까지 추가할 수 있습니다.');return;
+    }
+    const image:ImageBlock={
+      id:nextId.current++,kind:'image',url:parsed.href,
+      name:decodeURIComponent(parsed.pathname.split('/').pop()||parsed.hostname).slice(0,150),
+      width:0,height:0,ratioLocked:true,naturalWidth:0,naturalHeight:0,
+    };
+    setBlocks(previous=>targetBlockId===undefined?[...previous,image]:previous.map(block=>{
+      if(block.id!==targetBlockId)return block;
+      if(block.kind==='image')return {id:block.id,kind:'gallery',images:[block,image]};
+      if(block.kind==='gallery')return {...block,images:[...block.images,image]};
+      return block;
+    }));
+    const loader=new Image();
+    loader.onload=()=>setNaturalSize(image.id,loader.naturalWidth,loader.naturalHeight);
+    loader.onerror=()=>setError('URL 이미지를 불러오지 못했습니다. 주소와 이미지 공개 설정을 확인해 주세요.');
+    loader.src=image.url;
+    setNewImagePickerOpen(false);
+    setSlidePickerId(null);
+    setPickerUrl('');
+    setError('');
+    setPreview(false);
+  }
+  function imagePicker(targetBlockId?:number) {
+    const pickerLabel=targetBlockId===undefined?'본문 이미지':'슬라이드 이미지';
+    return <div className="notice-composer-image-picker" role="group" aria-label={pickerLabel+' 추가'}>
+      <div className="notice-composer-image-picker-heading"><strong>이미지 추가</strong><span>이미지 URL 또는 파일을 선택하세요.</span></div>
+      <div className="notice-composer-image-picker-controls">
+        <label className="notice-composer-image-picker-url">이미지 URL
+          <input type="url" placeholder="https://example.com/photo.jpg" value={pickerUrl}
+            aria-label={pickerLabel+' URL'} onChange={event=>setPickerUrl(event.target.value)}
+            onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();addUrlImage(targetBlockId);}}}/>
+        </label>
+        <button type="button" className="outline-action" disabled={!pickerUrl.trim()} onClick={()=>addUrlImage(targetBlockId)}>URL 이미지 추가</button>
+        <label className="outline-action notice-composer-file notice-composer-picker-file"><ImagePlus size={15}/> 파일 업로드
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple
+            onChange={event=>addImages(event,targetBlockId)}
+            aria-label={targetBlockId===undefined?'본문 이미지 선택':'슬라이드에 추가할 이미지 선택'}/>
+        </label>
+      </div>
+      <p>여러 파일을 선택하면 이미지 슬라이드로 표시됩니다. 선택한 파일은 브라우저에서만 미리 보입니다.</p>
+    </div>;
   }
   function changeText(id: number, text: string) {
     setBlocks(previous => previous.map(block => block.id === id && block.kind === 'text' ? { ...block, text } : block));
@@ -197,9 +269,11 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
               onChange={event => changeText(block.id, event.target.value)}/> :
             block.kind === 'gallery' ? <div className="notice-composer-gallery">
               <NoticeImageCarousel label="작성 중인 이미지 슬라이드" slides={gallerySlides(block.images)}/>
-              <label className="outline-action notice-composer-file notice-composer-gallery-add"><ImagePlus size={15}/> 슬라이드에 사진 추가
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={event => addImages(event, block.id)} aria-label="슬라이드에 추가할 이미지 선택"/>
-              </label>
+              <button type="button" className="outline-action notice-composer-gallery-add"
+                aria-expanded={slidePickerId===block.id} onClick={()=>toggleImagePicker(block.id)}>
+                <ImagePlus size={15}/> 슬라이드에 사진 추가
+              </button>
+              {slidePickerId===block.id&&imagePicker(block.id)}
               <p className="notice-composer-gallery-note">사진을 드래그하거나 이동 버튼으로 순서를 바꿀 수 있습니다. 각 이미지의 크기는 따로 설정하며, 슬라이드 영역은 가장 넓고 가장 높은 이미지에 맞춰집니다.</p>
               <div className="notice-composer-gallery-sizes">
                 {block.images.map((image, imageIndex) => <div key={image.id}
@@ -283,9 +357,11 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                   <RotateCcw size={14}/> 원본 비율 복원
                 </button>
               </div>
-              <label className="outline-action notice-composer-file notice-composer-gallery-add"><ImagePlus size={15}/> 슬라이드로 사진 추가
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={event => addImages(event, block.id)} aria-label="이 이미지와 묶을 사진 선택"/>
-              </label>
+              <button type="button" className="outline-action notice-composer-gallery-add"
+                aria-expanded={slidePickerId===block.id} onClick={()=>toggleImagePicker(block.id)}>
+                <ImagePlus size={15}/> 슬라이드로 사진 추가
+              </button>
+              {slidePickerId===block.id&&imagePicker(block.id)}
               <small>{block.name}</small>
             </div>}
         </div>)}
@@ -293,12 +369,11 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="notice-composer-actions">
         <button type="button" className="outline-action" onClick={addText}><Plus size={15}/> 본문 추가</button>
-        <label className="outline-action notice-composer-file">
-          <ImagePlus size={15}/> 이미지 추가
-          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={addImages} aria-label="본문 이미지 선택"/>
-        </label>
+        <button type="button" className="outline-action" aria-expanded={newImagePickerOpen}
+          onClick={()=>toggleImagePicker()}><ImagePlus size={15}/> 이미지 추가</button>
         <button type="button" className="button button-primary" onClick={() => setPreview(previous => !previous)}>{preview ? '편집으로 돌아가기' : '미리보기'}</button>
       </div>
+      {newImagePickerOpen&&imagePicker()}
       <div className="notice-composer-publish">
         <button type="button" className="button button-primary" disabled title="발행 기능은 추후 연결됩니다.">발행 (준비 중)</button>
         <span>현재 발행할 수 없습니다. 글과 이미지는 서버에 저장되지 않습니다.</span>
