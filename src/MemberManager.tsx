@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
+import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, Trash2, Upload, Users } from 'lucide-react';
 import type { MemberRole, Session } from './firebase';
 import {
   callError, deleteMember, downloadExampleCsv, formatMemberValues, loadMembers,
