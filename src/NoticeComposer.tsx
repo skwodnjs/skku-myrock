@@ -214,7 +214,10 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                       onDragStart={event => startSlideDrag(event, block.id, image.id)}
                       onDragEnd={() => { draggingSlide.current = null; setDropTarget(null); }}><GripVertical size={17}/></button>
                     <img className="notice-composer-gallery-thumb" src={image.url} alt="" draggable={false}/>
-                    <strong>{imageIndex + 1}번째 이미지 · {image.name}</strong>
+                    <strong className="notice-composer-gallery-file-label">
+                      <span className="notice-composer-gallery-image-number">{imageIndex + 1}번째 이미지</span>
+                      <span className="notice-composer-gallery-filename" title={image.name}>{image.name}</span>
+                    </strong>
                     <div className="notice-composer-gallery-order-actions">
                       <button type="button" disabled={imageIndex === 0} aria-label={(imageIndex + 1) + '번째 이미지 앞으로 이동'}
                         onClick={() => moveGallerySlide(block.id, image.id, -1)}><ArrowUp size={14}/></button>

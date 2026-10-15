@@ -287,3 +287,21 @@ test('notice editor uses compact dimensions and hides the drag handle on mobile 
   assert.match(composer, /onDragStart=\{event => startSlideDrag\(event, block\.id, image\.id\)\}/);
   assert.match(composer, /<NoticeImageCarousel label="작성 중인 이미지 슬라이드"/);
 });
+
+
+test('mobile image controls are 28px high and slide filenames use a second truncated line', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /<strong className="notice-composer-gallery-file-label">/);
+  assert.match(composer, /<span className="notice-composer-gallery-image-number">\{imageIndex \+ 1\}번째 이미지<\/span>/);
+  assert.match(composer, /<span className="notice-composer-gallery-filename" title=\{image\.name\}>\{image\.name\}<\/span>/);
+  assert.doesNotMatch(composer, /번째 이미지 · \{image\.name\}/);
+  assert.match(styles, /\.notice-composer-gallery-filename\{[^}]*overflow:hidden;text-overflow:ellipsis;white-space:nowrap/);
+  assert.match(styles, /@media\(max-width:700px\)\{[\s\S]*?\.notice-composer-dimensions input\{height:28px;min-height:28px;[\s\S]*?\.notice-composer-ratio-toggle\{width:28px;height:28px;min-height:28px\}[\s\S]*?\.notice-composer-original-size\{height:28px;min-height:28px;/);
+  assert.match(styles, /@media\(max-width:700px\)\{[\s\S]*?\.notice-composer-gallery-file-label\{flex-direction:column;align-items:flex-start;gap:1px\}[\s\S]*?\.notice-composer-gallery-filename\{flex:none;width:100%\}/);
+  assert.match(styles, /@media\(max-width:700px\)\{\.notice-composer-gallery-drag-handle\{display:none\}\}/);
+});
+test('management notice date keeps explicitly styled typography alongside author names', () => {
+  assert.match(app, /<span className="notice-date-cell">\{post\.date\}<\/span>/);
+  assert.match(app, /canWrite && <span className="notice-author-cell">\{post\.author\}<\/span>/);
+  assert.match(styles, /\.notice-table-row>\.notice-date-cell\{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:400;line-height:1\.6;[^}]*color:#a4afab;white-space:nowrap;text-align:right\}/);
+});
