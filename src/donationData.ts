@@ -53,7 +53,7 @@ export function serializeDonationCsv(rows: readonly DonationInput[]) {
   return '\uFEFF'+[...([DONATION_HEADERS] as readonly (readonly string[])[]),
     ...rows.map(r=>[r.date,r.donorName,r.studentId,r.amount,r.anonymous])].map(row=>row.map(quoteCsv).join(',')).join('\r\n');
 }
-export function displayAmount(amount:string){return Number(amount).toLocaleString('ko-KR')+'원';}
+export function displayAmount(amount:string){return BigInt(amount).toLocaleString('ko-KR')+'원';}
 export function displayDate(value:string){return value.replaceAll('-','. ')+'.';}
 
 export function sumDonationAmounts(rows: readonly Pick<OwnDonation,'amount'>[]): string {
