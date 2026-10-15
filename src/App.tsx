@@ -296,7 +296,7 @@ function LoginDialog({ close, notify }: { close: () => void; notify: Notify }) {
       else setError('학번 또는 비밀번호가 올바르지 않거나 등록되지 않은 계정입니다.');
     } finally {setBusy(false);}
   }
-  return <div className="modal-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)close();}}>
+  return <div className="modal-overlay" data-async-busy={busy ? "true" : undefined} onMouseDown={event=>{if(event.target===event.currentTarget)close();}}>
     <div className="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-heading">
       <button type="button" className="dialog-close" onClick={close} aria-label="닫기"><X size={20}/></button>
       <div className="dialog-brand"><img src={logo} alt="" /> <span>모여락</span></div>
@@ -335,7 +335,7 @@ function Profile({ user, profile, pending, error, notify, onSaved }: {user: User
     } finally {setSaving(false);}
   }
   return <><PageHeading tag="MY PROFILE" title="내 정보" description="등록된 회원 정보를 확인하고, 세션과 비밀번호를 변경할 수 있습니다."/>
-    <section className="container section-block profile-layout">
+    <section className="container section-block profile-layout" data-async-busy={saving ? "true" : undefined}>
       <div className="profile-panel"><div className="profile-title"><UserRound size={20}/><h2>회원 정보</h2></div>
         <dl className="profile-data"><div><dt>이름</dt><dd>{profile.name}</dd></div><div><dt>학번</dt><dd>{profile.studentId}</dd></div><div><dt>기수</dt><dd>{profile.generation}기</dd></div><div><dt>직책</dt><dd>{profile.positions.length?profile.positions.join(', '):'없음'}</dd></div><div><dt>권한</dt><dd>{profileRoleLabel(profile)}</dd></div></dl>
       </div>
@@ -467,7 +467,7 @@ function App() {
   const canManage=currentLevel!==null;
   const canManageDonations=currentLevel==='staff'||currentLevel==='president';
   const canHandover=canViewHandover(profile,hasSystemClaim);
-  return <div className="site-root">
+  return <div className="site-root" data-async-busy={rosterResetting||financeResetting ? "true" : undefined}>
     <header className="site-header"><div className="container header-inner">
       <button type="button" className="brand" onClick={()=>navigate('home')} aria-label="모여락 홈으로 이동"><img src={logo} alt="모여락 로고"/><span><strong>모여락</strong><small>MYROCK</small></span></button>
       <nav className="desktop-nav" aria-label="주 메뉴">{navGroups.map(group=><div className="more-wrapper nav-group" key={group.label} onMouseEnter={()=>setOpenGroup(group.label)} onMouseLeave={()=>setOpenGroup(null)}><button type="button" aria-expanded={openGroup===group.label} className={group.items.some(i=>i.id===page)?'active':''} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}>{group.label} <ChevronDown size={13}/></button>{openGroup===group.label&&<div className="more-menu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}</nav>
