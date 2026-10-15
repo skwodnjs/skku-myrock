@@ -68,7 +68,7 @@ test('server-only sensitive ledger operations and accessible manager actions rem
   const publicRoute=await readFile(new URL('../functions/api/donations/public.js',import.meta.url),'utf8');
   const mineRoute=await readFile(new URL('../functions/api/donations/mine.js',import.meta.url),'utf8');
   const managementRoute=await readFile(new URL('../functions/api/donations/manage.js',import.meta.url),'utf8');
-  for(const phrase of ['개별 추가','CSV 파일 선택','전체 CSV 다운로드','익명자 명단 관리','익명자 명단 저장','수정','실무단 이상']){
+  for(const phrase of ['개별 추가','CSV 파일 선택','전체 내역 CSV 다운로드','익명자 명단 관리','익명자 명단 저장','수정','실무단 이상']){
     assert.ok(manager.includes(phrase),phrase);
   }
   assert.match(api,/auth.currentUser\?\.getIdToken\(\)/);
@@ -113,4 +113,28 @@ test('donation privacy guidance matches the actual CSV flag and anonymous roster
   assert.match(finance, /해당 기록의 <b>익명여부<\/b>를 설정/);
   assert.match(finance, /학번을 기준으로 <b>익명자 명단<\/b>에 등록/);
   assert.doesNotMatch(finance, /홍길동\(비공개\)/);
+});
+
+test('personal donation sum and CSV date-range preview are visible only with valid data', async () => {
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  assert.match(finance,/mineLoaded&&!mineError&&<div className="finance-personal-total">/);
+  assert.match(finance,/지금까지의 내 총 후원 금액/);
+  assert.match(finance,/displayAmount\(sumDonationAmounts\(mine\)\)/);
+  assert.match(manager,/const csvRange=donationDateRange\(csvRows\)/);
+  assert.match(manager,/추가 준비: \{csvRows.length\}건\{csvRange&&/);
+  assert.match(manager,/csvRange.start/);
+  assert.match(manager,/csvRange.end/);
+  assert.match(styles,/\.finance-personal-total\{/);
+});
+test('anonymous registry requires full identity and saved rows are read-only until removed',async()=>{
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  const server=await readFile(new URL('../functions/_lib/donations.js',import.meta.url),'utf8');
+  assert.match(manager,/isSavedPerson\(person\)\?<>/);
+  assert.match(manager,/finance-manager-anonymous-value/);
+  assert.match(manager,/person\.donorName\.trim\(\)/);
+  assert.match(manager,/\^\\d\{10\}\$/);
+  assert.match(manager,/익명자 명단은 이름과 숫자 10자리 학번을 모두 입력/);
+  assert.match(manager,/saveAnonymousPeople\(cleaned,data.registryUpdateTime\)/);
+  assert.match(server,/!donorName \|\| donorName.length > 80/);
+  assert.doesNotMatch(manager,/placeholder="이름 \(선택\)"/);
 });

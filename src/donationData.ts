@@ -55,3 +55,12 @@ export function serializeDonationCsv(rows: readonly DonationInput[]) {
 }
 export function displayAmount(amount:string){return Number(amount).toLocaleString('ko-KR')+'원';}
 export function displayDate(value:string){return value.replaceAll('-','. ')+'.';}
+
+export function sumDonationAmounts(rows: readonly Pick<OwnDonation,'amount'>[]): string {
+  return rows.reduce((total,row)=>total+BigInt(row.amount),0n).toString();
+}
+export function donationDateRange(rows: readonly Pick<DonationInput,'date'>[]): {start:string;end:string}|null {
+  if(!rows.length)return null;
+  const sorted=rows.map(row=>row.date).sort();
+  return {start:sorted[0],end:sorted[sorted.length-1]};
+}

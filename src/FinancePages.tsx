@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getOwnDonations, getPublicDonations } from './donationApi';
-import { displayAmount, displayDate } from './donationData';
+import { displayAmount, displayDate, sumDonationAmounts } from './donationData';
 import type { OwnDonation, PublicDonation } from './donationData';
 import { ArrowLeft, ArrowRight, ArrowUpRight, ClipboardList, HeartHandshake, LockKeyhole, Wallet } from 'lucide-react';
 
@@ -105,6 +105,7 @@ export function DonationHistory({
   const [mineError,setMineError]=useState('');
   const [loadingAll,setLoadingAll]=useState(true);
   const [loadingMine,setLoadingMine]=useState(false);
+  const [mineLoaded,setMineLoaded]=useState(false);
   useEffect(()=>{
     let active=true;
     void getPublicDonations().then(data=>{if(active)setAll(data.records);})
@@ -114,9 +115,9 @@ export function DonationHistory({
   },[]);
   useEffect(()=>{
     let active=true;
-    if(authPending||!loggedIn){setMine([]);return()=>{active=false;};}
-    setLoadingMine(true);setMineError('');
-    void getOwnDonations().then(data=>{if(active)setMine(data.records);})
+    if(authPending||!loggedIn){setMine([]);setMineLoaded(false);return()=>{active=false;};}
+    setLoadingMine(true);setMineLoaded(false);setMine([]);setMineError('');
+    void getOwnDonations().then(data=>{if(active){setMine(data.records);setMineLoaded(true);}})
       .catch(reason=>{if(active)setMineError(reason instanceof Error?reason.message:'내 후원 기록 조회 오류');})
       .finally(()=>{if(active)setLoadingMine(false);});
     return()=>{active=false;};
@@ -152,6 +153,10 @@ export function DonationHistory({
         </div>
         {authPending?<FinanceEmpty title="로그인 상태 확인 중" description="본인 확인 후 내역을 불러옵니다."/>:
           loggedIn?<div className="finance-record-table">
+            {mineLoaded&&!mineError&&<div className="finance-personal-total">
+              <span>지금까지의 내 총 후원 금액</span>
+              <strong>{displayAmount(sumDonationAmounts(mine))}</strong>
+            </div>}
             <div className="finance-record-table-header finance-personal-columns"><span>후원일</span><span>후원 금액</span></div>
             {loadingMine?<FinanceEmpty title="내 후원 기록 조회 중" description="본인 학번으로 조회하고 있습니다."/>:
               mineError?<FinanceEmpty title="내 후원 기록 조회 실패" description={mineError}/>:

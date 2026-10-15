@@ -1604,3 +1604,12 @@
   .finance-manager-anonymous-row>button{grid-column:1/-1;justify-self:start;height:34px}
 }
 @media(max-width:420px){.finance-manager-edit-grid{grid-template-columns:1fr}.finance-manager-heading{align-items:start}}
+
+/* Total for logged-in member's student-ID matched donations. */
+.finance-personal-total{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 19px;background:#f2f7f3;border-bottom:1px solid #d9e6db}
+.finance-personal-total span{font-size:12px;color:#536d5d;font-weight:600}
+.finance-personal-total strong{font-size:20px;color:#2e6047;font-variant-numeric:tabular-nums;white-space:nowrap}
+.finance-manager-anonymous-value{display:flex;flex-direction:column;gap:7px;min-width:0;justify-content:center;color:#466350}
+.finance-manager-anonymous-value small{font-size:11px;color:#738a7a}
+.finance-manager-anonymous-value strong{font-size:13px;overflow-wrap:anywhere;font-weight:600}
+@media(max-width:700px){.finance-personal-total{padding:17px 13px}.finance-personal-total strong{font-size:18px}}
