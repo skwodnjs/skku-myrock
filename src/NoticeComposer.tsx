@@ -367,13 +367,13 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
         </div>)}
       </div>}
       {error && <p className="form-error" role="alert">{error}</p>}
+      {newImagePickerOpen&&imagePicker()}
       <div className="notice-composer-actions">
         <button type="button" className="outline-action" onClick={addText}><Plus size={15}/> 본문 추가</button>
         <button type="button" className="outline-action" aria-expanded={newImagePickerOpen}
           onClick={()=>toggleImagePicker()}><ImagePlus size={15}/> 이미지 추가</button>
         <button type="button" className="button button-primary" onClick={() => setPreview(previous => !previous)}>{preview ? '편집으로 돌아가기' : '미리보기'}</button>
       </div>
-      {newImagePickerOpen&&imagePicker()}
       <div className="notice-composer-publish">
         <button type="button" className="button button-primary" disabled title="발행 기능은 추후 연결됩니다.">발행 (준비 중)</button>
         <span>현재 발행할 수 없습니다. 글과 이미지는 서버에 저장되지 않습니다.</span>
