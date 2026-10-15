@@ -12,7 +12,7 @@ import { onRequestPost as purgePost, DONATIONS_RESET_CONFIRMATION } from '../fun
 test('CSV semantics: only o is anonymous; unrecognized identifiers and same-name people are handled safely', () => {
   const sample={date:'2026-10-04',donorName:'홍길동',studentId:'2026300001',amount:'10000',anonymous:'o'};
   assert.equal(normalizeDonation({...sample,anonymous:'o'}).anonymous,'o');
-  for(const flag of ['','x','NO','1','false'])assert.equal(normalizeDonation({...sample,anonymous:flag}).anonymous,'x');
+  for(const flag of ['','x','NO','1','false','O'])assert.equal(normalizeDonation({...sample,anonymous:flag}).anonymous,'x');
   assert.equal(publicDonation({...sample,id:'donation1'},[]).donorName,'익명');
   assert.equal(publicDonation({...sample,id:'donation1',anonymous:'x'},[]).donorName,'홍길동');
   assert.equal(publicDonation({...sample,id:'donation1',anonymous:'x',studentId:''},[]).donorName,'익명');
