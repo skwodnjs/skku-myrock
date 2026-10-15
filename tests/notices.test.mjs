@@ -153,5 +153,6 @@ test('image editor accepts px dimensions, defaults to locked ratio and allows in
   }
   assert.match(styles, /\.notice-composer-dimensions\s*\{/);
   assert.match(styles, /\.notice-composer-ratio-toggle\s*\{/);
+  assert.match(styles, /\.notice-composer-image-stage img,\.notice-composer-preview-image img\{[^}]*max-height:none;/);
   assert.doesNotMatch(component, /uploadBytes|uploadString|addDoc|setDoc/);
 });
