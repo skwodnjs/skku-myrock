@@ -1559,3 +1559,48 @@
 /* Desktop retains the '*' separator; mobile uses a two-line label with no separator. */
 .notice-composer-gallery-image-number::after{content:" *";white-space:pre}
 @media(max-width:700px){.notice-composer-gallery-image-number::after{content:none}}
+
+
+/* Donation ledger management: compact, responsive tables and protected edit forms. */
+.finance-manager-entry{display:flex;justify-content:flex-end;margin:-28px 0 30px}
+.finance-record-row{display:grid;align-items:center;gap:12px;padding:19px 16px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6;color:#52685c}
+.finance-record-row>span:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.finance-personal-columns{grid-template-columns:1fr 1fr}
+.finance-manager-section{margin:30px 0 50px}
+.finance-manager-heading{display:flex;align-items:start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:19px}
+.finance-manager-heading h2{font-size:21px;margin:0 0 7px}
+.finance-manager-heading p{font-size:12px;color:#788c80;line-height:1.75;margin:0}
+.finance-manager-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.finance-manager-actions button{display:inline-flex;align-items:center;gap:7px}
+.finance-manager-import{padding:17px 19px;background:#f7faf8;border:1px solid #dde8e0;margin-bottom:23px;display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+.finance-manager-import>span{font-size:11px;line-height:1.6;color:#7f9386}
+.finance-manager-upload{position:relative;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.finance-manager-upload input{position:absolute;width:1px;height:1px;opacity:0}
+.finance-manager-upload:focus-within{outline:2px solid #6a9c7d;outline-offset:2px}
+.finance-manager-import-confirm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%}
+.finance-manager-import-confirm strong{font-size:12px;color:#42664f}
+.finance-manager-edit{border:1px solid #d9e7dc;background:#fbfdfb;padding:20px;margin:16px 0 23px}
+.finance-manager-edit h3{margin:0 0 18px;font-size:16px}
+.finance-manager-edit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:17px}
+.finance-manager-edit-grid label,.finance-manager-anonymous-row label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#597365;font-weight:600}
+.finance-manager-edit-grid input,.finance-manager-edit-grid select,.finance-manager-anonymous-row input{box-sizing:border-box;width:100%;min-width:0;height:39px;padding:0 10px;border:1px solid #d9e5db;background:#fff;font-size:12px;color:var(--ink)}
+.finance-manager-table-wrap{max-width:100%;overflow-x:auto;border-top:1px solid #91a598}
+.finance-manager-table{border-collapse:collapse;width:100%;min-width:690px;text-align:left;font-size:12px;color:#567064}
+.finance-manager-table th{padding:14px 11px;font-size:11px;font-weight:600;color:#8a9d91;background:#f7faf8;white-space:nowrap}
+.finance-manager-table td{padding:13px 11px;border-bottom:1px solid #e0e8e2;white-space:nowrap}
+.finance-manager-table td:nth-child(4){font-variant-numeric:tabular-nums}
+.finance-manager-table .outline-action{padding:7px 10px;font-size:11px}
+.finance-manager-anonymous-list{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.finance-manager-anonymous-list>p{font-size:12px;color:#8d9b91}
+.finance-manager-anonymous-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px;border-bottom:1px solid #e1e9e3;padding:10px 0}
+.finance-manager-anonymous-row button{height:39px}
+.finance-manager-success{padding:13px 15px;color:#36674f;background:#eef7f0;border:1px solid #d3e6d8;font-size:12px}
+@media(max-width:700px){
+  .finance-manager-entry{margin:0 0 25px}
+  .finance-record-row{padding:16px 12px;gap:8px;font-size:11px}
+  .finance-manager-edit-grid{grid-template-columns:1fr 1fr}
+  .finance-manager-import{padding:14px}
+  .finance-manager-anonymous-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .finance-manager-anonymous-row>button{grid-column:1/-1;justify-self:start;height:34px}
+}
+@media(max-width:420px){.finance-manager-edit-grid{grid-template-columns:1fr}.finance-manager-heading{align-items:start}}
