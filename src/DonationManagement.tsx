@@ -19,6 +19,13 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   const [csvRows,setCsvRows]=useState<DonationInput[]>([]);
   const [people,setPeople]=useState<AnonymousPerson[]>([]);
   const [peopleChanged,setPeopleChanged]=useState(false);
+  const [peopleError,setPeopleError]=useState('');
+  const [peopleMessage,setPeopleMessage]=useState('');
+  function markPeopleChanged() {
+    setPeopleChanged(true);
+    setPeopleError('');
+    setPeopleMessage('');
+  }
   const csvRange=donationDateRange(csvRows);
   function isSavedPerson(person:AnonymousPerson) {
     return Boolean(person.donorName.trim() && /^\d{10}$/.test(person.studentId) &&
@@ -81,15 +88,16 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   }
   async function persistPeople() {
     if(busy||!data)return;
-    setBusy(true);setError('');setMessage('');
+    setPeopleError('');setPeopleMessage('');
+    setBusy(true);
     try{
       if(people.some(person=>!person.donorName.trim()||!/^\d{10}$/.test(person.studentId.trim()))) {
         throw new Error('익명자 명단은 이름과 숫자 10자리 학번을 모두 입력해야 저장할 수 있습니다.');
       }
       const cleaned=people.map(person=>({donorName:person.donorName.trim(),studentId:person.studentId.trim()}));
       await saveAnonymousPeople(cleaned,data.registryUpdateTime);
-      await refresh();setMessage('익명자 명단이 저장되었습니다.');
-    }catch(reason){setError(reason instanceof Error?reason.message:'익명자 명단 저장 오류');}
+      await refresh();setPeopleMessage('익명자 명단이 저장되었습니다.');
+    }catch(reason){setPeopleError(reason instanceof Error?reason.message:'익명자 명단 저장 오류');}
     finally{setBusy(false);}
   }
   return <>
@@ -135,7 +143,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
             </div>
           </form>}
           <div className="finance-manager-table-wrap">
-            <table className="finance-manager-table"><thead><tr><th>후원일</th><th>후원자명</th><th>학번</th><th>후원금액</th><th>익명</th><th>관리</th></tr></thead>
+            <table className="finance-manager-table finance-donations-admin"><thead><tr><th>후원일</th><th>후원자명</th><th>학번</th><th>후원금액</th><th>익명</th><th>관리</th></tr></thead>
               <tbody>{data.records.length?data.records.map((record:DonationRecord)=>
                 editing?.id===record.id?
                   <tr key={record.id} className="finance-inline-edit">
@@ -146,8 +154,10 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
                     <td><select aria-label="익명여부 수정" value={editing.row.anonymous} disabled={busy} onChange={e=>updateRow('anonymous',e.target.value)}>
                       <option value="x">x</option><option value="o">o</option>
                     </select></td>
-                    <td className="finance-row-actions"><button type="button" className="outline-action" disabled={busy} onClick={()=>void persist()}><Save size={13}/> 저장</button>
-                      <button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing(null)}>취소</button></td>
+                    <td className="finance-row-actions"><div className="finance-inline-row-actions">
+                      <button type="button" className="outline-action" disabled={busy} onClick={()=>void persist()}><Save size={13}/> 저장</button>
+                      <button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing(null)}>취소</button>
+                    </div></td>
                   </tr>:
                   <tr key={record.id}>
                     <td>{displayDate(record.date)}</td><td>{record.donorName||'미확인'}</td><td>{record.studentId||'미확인'}</td>
@@ -160,7 +170,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
         </section>
         <section className="finance-manager-section">
           <div className="finance-manager-heading"><div><h2>익명자 명단 관리</h2><p>이름과 숫자 10자리 학번을 모두 등록해야 해당 학번의 모든 후원이 익명으로 표시됩니다. 저장된 인원은 확인만 가능하며, 제외한 후에는 명단을 다시 저장해 주세요.</p></div>
-            <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>[...previous,{...blankPerson}]);setPeopleChanged(true);}}><Plus size={15}/> 익명자 추가</button>
+            <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>[...previous,{...blankPerson}]);markPeopleChanged();}}><Plus size={15}/> 익명자 추가</button>
           </div>
           <div className="finance-manager-anonymous-list">
             {people.length===0&&<p>익명자 명단이 비어 있습니다.</p>}
@@ -169,13 +179,19 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
                 <span className="finance-manager-anonymous-value"><small>이름</small><strong>{person.donorName}</strong></span>
                 <span className="finance-manager-anonymous-value"><small>학번</small><strong>{person.studentId}</strong></span>
               </>:<>
-                <label>이름<input required value={person.donorName} maxLength={80} placeholder="이름" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));setPeopleChanged(true);}}/></label>
-                <label>학번<input required pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));setPeopleChanged(true);}}/></label>
+                <label>이름<input required value={person.donorName} maxLength={80} placeholder="이름" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));markPeopleChanged();}}/></label>
+                <label>학번<input required pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));markPeopleChanged();}}/></label>
               </>}
-              <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>previous.filter((_,i)=>i!==index));setPeopleChanged(true);}}>제외</button>
+              <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>previous.filter((_,i)=>i!==index));markPeopleChanged();}}>제외</button>
             </div>)}
           </div>
-          <div className="finance-manager-actions"><button type="button" className="button button-primary" disabled={busy||!peopleChanged} onClick={()=>void persistPeople()}>익명자 명단 저장</button></div>
+          <div className="finance-manager-people-save">
+            <button type="button" className="button button-primary" disabled={busy||!peopleChanged} onClick={()=>void persistPeople()}>익명자 명단 저장</button>
+            <div className="finance-manager-people-feedback" aria-live="polite">
+              {peopleError&&<p role="alert" className="finance-manager-people-error">{peopleError}</p>}
+              {peopleMessage&&<p role="status" className="finance-manager-people-success">{peopleMessage}</p>}
+            </div>
+          </div>
         </section>
       </>}
     </div>

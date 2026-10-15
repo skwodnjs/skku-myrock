@@ -317,12 +317,13 @@ test('notice registration date heading and values share centered alignment', () 
   assert.match(styles, /\.notice-table-head\.has-author,\.notice-table-row\.has-author/);
 });
 
-test('desktop shows a star between slide number and filename, while mobile keeps it absent', async () => {
+test('desktop shows a centered dot between slide number and filename, while mobile hides it', async () => {
   const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
   assert.match(composer, /<span className="notice-composer-gallery-image-number">\{imageIndex \+ 1\}번째 이미지<\/span>/);
   assert.match(composer, /<span className="notice-composer-gallery-filename" title=\{image\.name\}>\{image\.name\}<\/span>/);
-  assert.match(styles, /\.notice-composer-gallery-image-number::after\{content:" \*";white-space:pre\}/);
+  assert.match(styles, /\.notice-composer-gallery-image-number::after\{content:" ·";white-space:pre\}/);
   assert.match(styles, /@media\(max-width:700px\)\{\.notice-composer-gallery-image-number::after\{content:none\}\}/);
+  assert.doesNotMatch(styles, /\.notice-composer-gallery-image-number::after\{content:" \*"/);
   assert.match(styles, /\.notice-composer-gallery-filename\{[^}]*text-overflow:ellipsis;white-space:nowrap/);
   assert.match(styles, /\.notice-composer-gallery-file-label\{flex-direction:column;align-items:flex-start;gap:1px\}/);
 });

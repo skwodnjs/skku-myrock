@@ -1557,7 +1557,7 @@
 .notice-table-head>.notice-date-cell,.notice-table-row>.notice-date-cell{text-align:center}
 
 /* Desktop retains the '*' separator; mobile uses a two-line label with no separator. */
-.notice-composer-gallery-image-number::after{content:" *";white-space:pre}
+.notice-composer-gallery-image-number::after{content:" ·";white-space:pre}
 @media(max-width:700px){.notice-composer-gallery-image-number::after{content:none}}
 
 
@@ -1650,3 +1650,35 @@
  .finance-account-heading>.outline-action{font-size:11px;padding:8px 10px}
 }
 @media(max-width:420px){.finance-inline-fields{grid-template-columns:1fr}}
+
+
+/* The donation grid uses stable columns in view/edit modes, so editing never expands or shifts a column. */
+.finance-donations-admin{table-layout:fixed;min-width:900px}
+.finance-donations-admin th:nth-child(1){width:15%}
+.finance-donations-admin th:nth-child(2){width:20%}
+.finance-donations-admin th:nth-child(3){width:20%}
+.finance-donations-admin th:nth-child(4){width:19%}
+.finance-donations-admin th:nth-child(5){width:9%}
+.finance-donations-admin th:nth-child(6){width:17%}
+.finance-donations-admin td{overflow-wrap:anywhere}
+.finance-donations-admin .finance-inline-edit td{padding:10px 9px;vertical-align:middle}
+.finance-donations-admin .finance-inline-edit input,
+.finance-donations-admin .finance-inline-edit select{display:block;width:100%;height:36px;min-width:0;margin:0;font-size:12px}
+.finance-donations-admin .finance-inline-edit input[type=date]{padding-inline:5px}
+.finance-donations-admin .finance-inline-row-actions{display:flex;align-items:center;gap:6px;min-width:0}
+.finance-donations-admin .finance-inline-row-actions .outline-action{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  min-width:0;height:36px;box-sizing:border-box;padding:6px 5px;margin:0;white-space:nowrap;font-size:11px
+}
+/* Keep anonymous roster save feedback at its own action instead of the distant page header. */
+.finance-manager-people-save{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:7px}
+.finance-manager-people-save>.button{flex:0 0 auto}
+.finance-manager-people-feedback{min-width:0;flex:1 1 220px}
+.finance-manager-people-error,.finance-manager-people-success{margin:0;padding:8px 11px;font-size:12px;line-height:1.6;border:1px solid transparent}
+.finance-manager-people-error{color:#a63030;background:#fff1f1;border-color:#edcece}
+.finance-manager-people-success{color:#276344;background:#eff8f1;border-color:#cfdfd2}
+@media(max-width:700px){
+  .finance-manager-people-save{align-items:stretch;gap:8px}
+  .finance-manager-people-feedback{flex-basis:100%}
+  .finance-manager-people-error,.finance-manager-people-success{padding:9px 11px}
+}
