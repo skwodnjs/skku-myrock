@@ -21,8 +21,8 @@ export function resizeImageDimensions(size: ImageDimensions, axis: DimensionAxis
 }
 
 
-export function restoreOriginalDimensions(image: ImageDimensions & { naturalWidth: number; naturalHeight: number }): ImageDimensions {
+export function restoreInitialImageDimensions(image: ImageDimensions & { naturalWidth: number; naturalHeight: number }): ImageDimensions {
   return image.naturalWidth > 0 && image.naturalHeight > 0
-    ? { width: image.naturalWidth, height: image.naturalHeight }
+    ? initialImageDimensions(image.naturalWidth, image.naturalHeight)
     : { width: image.width, height: image.height };
 }
