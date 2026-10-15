@@ -88,7 +88,7 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
   return <>
     <div className="page-heading container"><span className="eyebrow">FINANCE ADMINISTRATION</span><h1>회비 집행 내역 관리</h1>
       <p>동아리 계좌의 입금과 출금을 포함한 모든 거래를 기록합니다.</p></div>
-    <div className="container finance-details-content finance-manager">
+    <div className="container finance-details-content finance-manager" data-async-busy={busy ? "true" : undefined}>
       <button type="button" className="finance-return-link" onClick={onBack}><ArrowLeft size={16}/> 회비 집행 내역으로 돌아가기</button>
       {error&&<p role="alert" className="form-error">{error}</p>}
       {message&&<p role="status" className="finance-manager-success">{message}</p>}
