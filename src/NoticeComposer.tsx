@@ -28,6 +28,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   }
   function addImages(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []);
+    if (!selected.length) return;
     const invalid = selected.find(file => !allowedTypes.has(file.type) || file.size > 10 * 1024 * 1024);
     if (invalid) {
       setError('PNG, JPG, WebP, GIF 형식의 10MB 이하 이미지만 추가할 수 있습니다.');
