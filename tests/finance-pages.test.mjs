@@ -107,3 +107,10 @@ test('footer copyright is top-left and contacts top-right with mobile stacking',
   assert.match(styles, /@media \(max-width:\s*620px\)[\s\S]*?\.site-footer \.footer-bottom\s*\{\s*grid-column:\s*1;\s*grid-row:\s*1;/);
   assert.match(styles, /@media \(max-width:\s*620px\)[\s\S]*?\.site-footer \.footer-contact-section\s*\{\s*grid-column:\s*1;\s*grid-row:\s*2;/);
 });
+
+
+test('donation privacy guidance matches the actual CSV flag and anonymous roster policy', () => {
+  assert.match(finance, /해당 기록의 <b>익명여부<\/b>를 설정/);
+  assert.match(finance, /학번을 기준으로 <b>익명자 명단<\/b>에 등록/);
+  assert.doesNotMatch(finance, /홍길동\(비공개\)/);
+});
