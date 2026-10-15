@@ -4,8 +4,11 @@ import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Link, Link2Off, Plus, Trash2 
 import type { NoticeCategory } from './noticesData';
 import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions } from './noticeImageSize';
 import type { DimensionAxis } from './noticeImageSize';
+import NoticeImageCarousel from './NoticeImageCarousel';
+import type { NoticeSlide } from './NoticeImageCarousel';
 
-type DraftBlock = { id: number; kind: 'text'; text: string } | { id: number; kind: 'image'; url: string; name: string; width: number; height: number; ratioLocked: boolean };
+type ImageBlock = { id: number; kind: 'image'; url: string; name: string; width: number; height: number; ratioLocked: boolean };
+type DraftBlock = { id: number; kind: 'text'; text: string } | ImageBlock | { id: number; kind: 'gallery'; images: ImageBlock[] };
 const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
 export default function NoticeComposer({ onBack }: { onBack: () => void }) {
@@ -31,12 +34,25 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
       event.target.value = '';
       return;
     }
-    const newImages: DraftBlock[] = selected.map(file => {
+    if (selected.length > 20) {
+      setError('이미지는 한 번에 최대 20장까지 선택할 수 있습니다.');
+      event.target.value = '';
+      return;
+    }
+    const newImages: ImageBlock[] = selected.map(file => {
       const url = URL.createObjectURL(file);
       objectUrls.current.push(url);
       return { id: nextId.current++, kind: 'image', url, name: file.name, width: 0, height: 0, ratioLocked: true };
     });
-    setBlocks(previous => [...previous, ...newImages]);
+    setBlocks(previous => [...previous, selected.length > 1
+      ? { id: nextId.current++, kind: 'gallery', images: newImages } : newImages[0]]);
+    // Load every slide's natural dimensions before the user opens it, so the
+    // shared stage immediately reflects the largest image in the group.
+    for (const image of newImages) {
+      const loader = new Image();
+      loader.onload = () => setNaturalSize(image.id, loader.naturalWidth, loader.naturalHeight);
+      loader.src = image.url;
+    }
     setError('');
     setPreview(false);
     event.target.value = '';
@@ -45,16 +61,37 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     setBlocks(previous => previous.map(block => block.id === id && block.kind === 'text' ? { ...block, text } : block));
   }
   function setNaturalSize(id: number, naturalWidth: number, naturalHeight: number) {
-    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image' && block.width === 0
-      ? { ...block, ...initialImageDimensions(naturalWidth, naturalHeight) } : block));
+    setBlocks(previous => previous.map(block => {
+      if (block.kind === 'gallery') return { ...block, images: block.images.map(image =>
+        image.id === id && image.width === 0 ? { ...image, ...initialImageDimensions(naturalWidth, naturalHeight) } : image) };
+      return block.kind === 'image' && block.id === id && block.width === 0
+        ? { ...block, ...initialImageDimensions(naturalWidth, naturalHeight) } : block;
+    }));
   }
   function changeImageSize(id: number, axis: DimensionAxis, value: number) {
-    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image'
-      ? { ...block, ...resizeImageDimensions(block, axis, value, block.ratioLocked) } : block));
+    setBlocks(previous => previous.map(block => {
+      if (block.kind === 'gallery') return { ...block, images: block.images.map(image =>
+        image.id === id ? { ...image, ...resizeImageDimensions(image, axis, value, image.ratioLocked) } : image) };
+      return block.kind === 'image' && block.id === id
+        ? { ...block, ...resizeImageDimensions(block, axis, value, block.ratioLocked) } : block;
+    }));
   }
   function toggleImageRatio(id: number) {
-    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image'
-      ? { ...block, ratioLocked: !block.ratioLocked } : block));
+    setBlocks(previous => previous.map(block => {
+      if (block.kind === 'gallery') return { ...block, images: block.images.map(image =>
+        image.id === id ? { ...image, ratioLocked: !image.ratioLocked } : image) };
+      return block.kind === 'image' && block.id === id ? { ...block, ratioLocked: !block.ratioLocked } : block;
+    }));
+  }
+  function removeSlide(groupId: number, imageId: number) {
+    setBlocks(previous => previous.flatMap(block => block.id === groupId && block.kind === 'gallery'
+      ? block.images.length === 1 ? [] : [{ ...block, images: block.images.filter(image => image.id !== imageId) }]
+      : [block]));
+  }
+  function gallerySlides(images: ImageBlock[]): NoticeSlide[] {
+    return images.map(image => ({ id: image.id, src: image.url, alt: image.name,
+      width: image.width || 320, height: image.height || 240,
+      onLoad: (width: number, height: number) => setNaturalSize(image.id, width, height) }));
   }
   function moveBlock(index: number, offset: number) {
     setBlocks(previous => {
@@ -69,7 +106,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     setBlocks(previous => previous.filter(block => block.id !== id));
   }
   function back() {
-    if ((title.trim() || blocks.some(block => block.kind === 'image' || block.text.trim())) &&
+    if ((title.trim() || blocks.some(block => block.kind !== 'text' || block.text.trim())) &&
         !window.confirm('현재 작성 중인 글은 저장되지 않습니다. 목록으로 돌아갈까요?')) return;
     onBack();
   }
@@ -97,6 +134,8 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
         <h3>{title.trim() || '제목 없음'}</h3>
         {blocks.map(block => block.kind === 'text'
           ? <p key={block.id}>{block.text || ' '}</p>
+          : block.kind === 'gallery'
+          ? <NoticeImageCarousel key={block.id} label="작성 중인 이미지 슬라이드 미리보기" slides={gallerySlides(block.images)}/>
           : <div key={block.id} className="notice-composer-preview-image"
               style={{ width: block.width || 320, aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : '4 / 3' }}>
               <img className="notice-composer-resized-image" src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
@@ -104,7 +143,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
       </div> : <div className="notice-composer-blocks">
         {blocks.map((block, index) => <div key={block.id} className="notice-composer-block">
           <div className="notice-composer-block-top">
-            <strong>{block.kind === 'text' ? '텍스트' : '이미지'} {index + 1}</strong>
+            <strong>{block.kind === 'text' ? '텍스트' : block.kind === 'gallery' ? '이미지 슬라이드' : '이미지'} {index + 1}</strong>
             <div className="notice-composer-block-actions">
               <button type="button" aria-label={'블록 ' + (index + 1) + ' 위로 이동'} disabled={index === 0} onClick={() => moveBlock(index, -1)}><ArrowUp size={15}/></button>
               <button type="button" aria-label={'블록 ' + (index + 1) + ' 아래로 이동'} disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)}><ArrowDown size={15}/></button>
@@ -114,6 +153,37 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
           {block.kind === 'text' ?
             <textarea aria-label={'본문 텍스트 ' + (index + 1)} value={block.text} rows={5} placeholder="내용을 입력하세요."
               onChange={event => changeText(block.id, event.target.value)}/> :
+            block.kind === 'gallery' ? <div className="notice-composer-gallery">
+              <NoticeImageCarousel label="작성 중인 이미지 슬라이드" slides={gallerySlides(block.images)}/>
+              <p className="notice-composer-gallery-note">각 이미지의 크기를 별도로 변경할 수 있습니다. 슬라이드 영역은 가장 넓은 이미지와 가장 높은 이미지에 맞춰집니다.</p>
+              <div className="notice-composer-gallery-sizes">
+                {block.images.map((image, imageIndex) => <div key={image.id} className="notice-composer-gallery-size-row">
+                  <div className="notice-composer-gallery-size-heading">
+                    <strong>{imageIndex + 1}번째 이미지 · {image.name}</strong>
+                    <button type="button" className="notice-composer-gallery-remove" onClick={() => removeSlide(block.id, image.id)} aria-label={(imageIndex + 1) + '번째 이미지 삭제'}><Trash2 size={14}/></button>
+                  </div>
+                  <div className="notice-composer-dimensions" role="group" aria-label={(imageIndex + 1) + '번째 이미지 크기'}>
+                    <label>W
+                      <input type="number" min={1} max={MAX_IMAGE_DIMENSION} step={1} inputMode="numeric"
+                        aria-label={(imageIndex + 1) + '번째 이미지 가로 크기 (px)'} value={image.width || ''}
+                        disabled={!image.width} onChange={event => changeImageSize(image.id, 'width', Number(event.target.value))}/>
+                      <span>px</span>
+                    </label>
+                    <button type="button" className="notice-composer-ratio-toggle" onClick={() => toggleImageRatio(image.id)}
+                      aria-label={image.ratioLocked ? '가로 세로 비율 유지 해제' : '가로 세로 비율 유지'}
+                      aria-pressed={image.ratioLocked} title={image.ratioLocked ? '비율 유지 중' : '비율 자유 조절'}>
+                      {image.ratioLocked ? <Link size={19} aria-hidden="true"/> : <Link2Off size={19} aria-hidden="true"/>}
+                    </button>
+                    <label>H
+                      <input type="number" min={1} max={MAX_IMAGE_DIMENSION} step={1} inputMode="numeric"
+                        aria-label={(imageIndex + 1) + '번째 이미지 세로 크기 (px)'} value={image.height || ''}
+                        disabled={!image.height} onChange={event => changeImageSize(image.id, 'height', Number(event.target.value))}/>
+                      <span>px</span>
+                    </label>
+                  </div>
+                </div>)}
+              </div>
+            </div> :
             <div className="notice-composer-image">
               <div className="notice-composer-image-stage" style={{
                 width: block.width || 320,
@@ -152,6 +222,10 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
           <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={addImages} aria-label="본문 이미지 선택"/>
         </label>
         <button type="button" className="button button-primary" onClick={() => setPreview(previous => !previous)}>{preview ? '편집으로 돌아가기' : '미리보기'}</button>
+      </div>
+      <div className="notice-composer-publish">
+        <button type="button" className="button button-primary" disabled title="발행 기능은 추후 연결됩니다.">발행 (준비 중)</button>
+        <span>현재 발행할 수 없습니다. 글과 이미지는 서버에 저장되지 않습니다.</span>
       </div>
       <p className="notice-composer-footnote">이미지는 브라우저에서만 미리 표시됩니다. 실제 게시 및 파일 업로드 기능은 추후 연결될 예정입니다.</p>
     </section>
