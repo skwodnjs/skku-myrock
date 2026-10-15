@@ -133,7 +133,7 @@ test('personal donation sum and CSV date-range preview are visible only with val
 test('anonymous registry requires full identity and saved rows are read-only until removed',async()=>{
   const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
   const server=await readFile(new URL('../functions/_lib/donations.js',import.meta.url),'utf8');
-  assert.match(manager,/isSavedPerson\(person\)\?<>/);
+  assert.match(manager,/isSavedPerson\(index\)\?<>/);
   assert.match(manager,/finance-manager-anonymous-value/);
   assert.match(manager,/person\.donorName\.trim\(\)/);
   assert.match(manager,/\^\\d\{10\}\$/);
@@ -217,7 +217,7 @@ test('both CSV managers provide matching sample formats and date guidance',async
     assert.match(manager,/window.confirm\('CSV '/);
   }
   assert.match(donations,/예시\) 2026-10-14/);
-  assert.match(donations,/익명 여부 표시에는 'o'를 정확하게 사용해주세요/);
+  assert.match(donations,/익명 여부는 소문자 'o'일 때만 익명이며, 빈칸이면 공개됩니다/);
   assert.doesNotMatch(donations,/후원일, 후원자명, 학번, 후원금액, 익명여부 · o만 익명 처리합니다/);
   assert.match(donations,/myrock-donations-template.csv/);
   assert.match(expenses,/예시\) 2026-10-14 15:30/);
