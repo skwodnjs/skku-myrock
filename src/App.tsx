@@ -122,17 +122,6 @@ function Home({ navigate, openNotice }: { navigate: Navigate; openNotice: (id: s
   </>;
 }
 
-const currentOfficers = [
-  { name: '김서연', positions: '회장, 보컬파트장' },
-  { name: '신희수', positions: '부회장' },
-  { name: '배은성', positions: '공연부장, 기타파트장' },
-  { name: '허지원', positions: '총무' },
-  { name: '정해준', positions: '홍보부장' },
-  { name: '김하은', positions: '베이스파트장' },
-  { name: '추서현', positions: '드럼파트장' },
-  { name: '김민현', positions: '키보드파트장' },
-] as const;
-
 function About({ navigate, canEdit }: { navigate: Navigate;canEdit:boolean }) {
   const [content,setContent]=useState<AboutContent>(DEFAULT_ABOUT);
   const [loadError,setLoadError]=useState('');
