@@ -24,7 +24,7 @@ export const readDonationAccount=()=>request<{account:DonationAccount}>('account
 export const readAccountForManagement=()=>request<{account:AccountVersion}>('account-manage',undefined,true);
 export const saveDonationAccount=(account:DonationAccount,expectedUpdateTime:string|null)=>
   request<{account:AccountVersion}>('account',{account,expectedUpdateTime},true);
-export const readExpenses=()=>request<{records:FinanceTransactionInput[] & {id:string}[]}>('expenses');
+export const readExpenses=()=>request<{records:Array<FinanceTransactionInput & {id:string}>}>('expenses');
 export const readExpensesForManagement=()=>request<{records:FinanceTransaction[]}>('expenses-manage',undefined,true);
 export const saveExpense=(record:FinanceTransactionInput,id?:string,expectedUpdateTime?:string)=>
   request<{record:FinanceTransaction}>('expenses-manage',{action:'save',record,id,expectedUpdateTime},true);
