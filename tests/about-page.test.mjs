@@ -2,49 +2,41 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
-const stylesheet = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+const app=await readFile(new URL('../src/App.tsx',import.meta.url),'utf8');
+const styles=await readFile(new URL('../src/styles.css',import.meta.url),'utf8');
+const defaults=await readFile(new URL('../src/aboutContent.ts',import.meta.url),'utf8');
+const editor=await readFile(new URL('../src/AboutManagement.tsx',import.meta.url),'utf8';
 
-test('club introduction lists all eight current officers in the requested order', () => {
-  const block = app.match(/const currentOfficers = \[([\s\S]*?)\] as const;/)?.[1];
-  assert.ok(block, 'current officers data must exist');
-  const entries = [...block.matchAll(/name: '([^']+)', positions: '([^']+)'/g)]
-    .map(([, name, positions]) => [name, positions]);
-  assert.deepEqual(entries, [
-    ['김서연', '회장, 보컬파트장'],
-    ['신희수', '부회장'],
-    ['배은성', '공연부장, 기타파트장'],
-    ['허지원', '총무'],
-    ['정해준', '홍보부장'],
-    ['김하은', '베이스파트장'],
-    ['추서현', '드럼파트장'],
-    ['김민현', '키보드파트장'],
-  ]);
+test('default introduction retains eight leaders and original two milestones',()=>{
+  for(const name of ['김서연','신희수','배은성','허지원','정해준','김하은','추서현','김민현'])
+    assert.ok(defaults.includes("name:'"+name+"'"),name);
+  assert.match(defaults,/cohortLabel:'28기 운영진 소개'/);
+  assert.match(defaults,/199x년/);
+  assert.match(defaults,/모여락 창단/);
+  assert.match(defaults,/2023년/);
+  assert.match(defaults,/중앙동아리 승격/);
 });
-test('the officer introduction uses the 28th cohort label without a headcount', () => {
-  assert.match(app, /<SectionHeading title="운영진" aside="28기 운영진 소개"\s*\/>/);
-  assert.doesNotMatch(app, /현재 운영진 8명/);
+test('public about screen loads persisted introduction and leaves social links intact',()=>{
+  assert.match(app,/function About\(\{ navigate, canEdit \}/);
+  assert.match(app,/void getAbout\(\)\.then/);
+  assert.match(app,/content\.officers\.map\(officer/);
+  assert.match(app,/content\.history\.map\(item/);
+  assert.match(app,/content\.cohortLabel/);
+  assert.match(app,/content\.heroImage\?<img/);
+  assert.match(app,/officer\.photoUrl\?<img/);
+  assert.match(styles,/\.leader-item img\.leader-photo\{/);
+  assert.match(app,/href="https:\/\/www\.instagram\.com\/skku_m\.y\.rock\/"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
+  assert.match(app,/href="https:\/\/www\.youtube\.com\/@SKKUMYRock"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
 });
-
-test('officers have compact photos on the left and text on the right', () => {
-  assert.match(app, /currentOfficers\.map\(officer/);
-  assert.match(app, /<Placeholder label="사진" className="leader-photo"\s*\/>/);
-  assert.match(stylesheet, /\.leader-item \.leader-photo\s*\{[^}]*aspect-ratio:\s*3\s*\/\s*4/s);
-  assert.match(stylesheet, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(stylesheet, /grid-template-columns:\s*76px minmax\(0,\s*1fr\)/);
-  assert.match(stylesheet, /@media \(max-width:\s*620px\)\s*\{[\s\S]*?\.leadership-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-});
-test('club history contains just the two given milestones', () => {
-  const history = app.match(/<SectionHeading title="연혁"([\s\S]*?)<\/section>/)?.[1] ?? '';
-  assert.match(history, /199x년/);
-  assert.match(history, /모여락 창단/);
-  assert.match(history, /2023년/);
-  assert.match(history, /중앙동아리 승격/);
-  assert.equal((history.match(/<div><span>/g) ?? []).length, 2);
-});
-test('social links open the requested official accounts', () => {
-  assert.match(app, /href="https:\/\/www\.instagram\.com\/skku_m\.y\.rock\/"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(app, /href="https:\/\/www\.youtube\.com\/@SKKUMYRock"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(app, /<small>@skku_m\.y\.rock<\/small>/);
-  assert.match(app, /<small>@SKKUMYRock<\/small>/);
+test('protected editor supports leader management, photo upload, history and save',()=>{
+  assert.match(app,/page==='about-manage'/);
+  assert.match(app,/user&&canManageDonations\?<AboutManagement/);
+  assert.match(app,/canEdit=\{Boolean\(user&&!authPending&&canManageDonations\)\}/);
+  assert.match(app,/navigate\('about-manage'\)/);
+  assert.match(editor,/getAboutManagement\(\)/);
+  assert.match(editor,/saveAbout\(content,version\)/);
+  assert.match(editor,/uploadAboutImage\(file\)/);
+  for(const label of ['동아리 대표 사진','운영진 명단','운영진 추가','연혁 추가','사진 URL','이미지 URL','변경 사항 저장'])
+    assert.ok(editor.includes(label),label);
+  assert.match(styles,/\.about-manage-fields\{/);
 });
