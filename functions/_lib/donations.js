@@ -20,13 +20,14 @@ export function normalizeAnonymousPeople(input) {
   const entries = input.map(row => {
     const donorName = String(row?.donorName ?? '').trim();
     const studentId = String(row?.studentId ?? '').trim();
-    if ((!donorName && !studentId) || donorName.length > 80 ||
-        (studentId && !/^\d{10}$/.test(studentId))) reject('익명자 명단의 이름·학번 형식을 확인해 주세요.');
+    if (!donorName || donorName.length > 80 || !/^\d{10}$/.test(studentId)) {
+      reject('익명자 명단은 이름과 숫자 10자리 학번을 모두 입력해 주세요.');
+    }
     return { donorName, studentId };
   });
   const seen = new Set();
   for (const entry of entries) {
-    const key = entry.studentId ? 'id:' + entry.studentId : 'name:' + entry.donorName;
+    const key = entry.studentId;
     if (seen.has(key)) reject('익명자 명단에 중복된 사람이 있습니다.');
     seen.add(key);
   }
@@ -34,9 +35,9 @@ export function normalizeAnonymousPeople(input) {
 }
 export function donorIsAnonymous(record, people) {
   if (!record.donorName || !record.studentId || record.anonymous === 'o') return true;
-  return people.some(person => person.studentId
-    ? person.studentId === record.studentId
-    : !record.studentId && person.donorName === record.donorName);
+  return people.some(person => typeof person?.donorName === 'string' &&
+    person.donorName.trim().length > 0 && typeof person.studentId === 'string' &&
+    /^\d{10}$/.test(person.studentId) && person.studentId === record.studentId);
 }
 export function publicDonation(record, people) {
   return { id: record.id, date: record.date, amount: record.amount,

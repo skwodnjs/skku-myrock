@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { ArrowLeft, Download, Plus, Save, Upload } from 'lucide-react';
 import { getDonationManagement, importDonations, saveDonation, saveAnonymousPeople } from './donationApi';
 import type { ManageData } from './donationApi';
-import { displayAmount, displayDate, EMPTY_DONATION, parseDonationCsv, serializeDonationCsv, validateDonation } from './donationData';
+import { displayAmount, displayDate, donationDateRange, EMPTY_DONATION, parseDonationCsv, serializeDonationCsv, validateDonation } from './donationData';
 import type { AnonymousPerson, DonationInput, DonationRecord } from './donationData';
 
 type Editing = { id?: string; updateTime?: string; row: DonationInput };
@@ -19,6 +19,11 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   const [csvRows,setCsvRows]=useState<DonationInput[]>([]);
   const [people,setPeople]=useState<AnonymousPerson[]>([]);
   const [peopleChanged,setPeopleChanged]=useState(false);
+  const csvRange=donationDateRange(csvRows);
+  function isSavedPerson(person:AnonymousPerson) {
+    return Boolean(person.donorName.trim() && /^\d{10}$/.test(person.studentId) &&
+      data?.people.some(saved=>saved.donorName===person.donorName && saved.studentId===person.studentId));
+  }
   async function refresh() {
     const result=await getDonationManagement();
     setData(result);setPeople(result.people);setPeopleChanged(false);
@@ -78,7 +83,10 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     if(busy||!data)return;
     setBusy(true);setError('');setMessage('');
     try{
-      const cleaned=people.filter(person=>person.donorName.trim()||person.studentId.trim());
+      if(people.some(person=>!person.donorName.trim()||!/^\d{10}$/.test(person.studentId.trim()))) {
+        throw new Error('익명자 명단은 이름과 숫자 10자리 학번을 모두 입력해야 저장할 수 있습니다.');
+      }
+      const cleaned=people.map(person=>({donorName:person.donorName.trim(),studentId:person.studentId.trim()}));
       await saveAnonymousPeople(cleaned,data.registryUpdateTime);
       await refresh();setMessage('익명자 명단이 저장되었습니다.');
     }catch(reason){setError(reason instanceof Error?reason.message:'익명자 명단 저장 오류');}
@@ -97,7 +105,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           <div className="finance-manager-heading"><div><h2>후원 기록</h2><p>내부 기록에는 익명 처리된 후원자의 원본 이름과 학번도 보관됩니다.</p></div>
             <div className="finance-manager-actions">
               <button className="outline-action" type="button" onClick={()=>setEditing({row:{...EMPTY_DONATION}})} disabled={busy}><Plus size={15}/> 개별 추가</button>
-              <button className="outline-action" type="button" onClick={downloadCsv}><Download size={15}/> 전체 CSV 다운로드</button>
+              <button className="outline-action" type="button" onClick={downloadCsv}><Download size={15}/> 전체 내역 CSV 다운로드</button>
             </div>
           </div>
           <div className="finance-manager-import">
@@ -106,7 +114,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
             </label>
             <span>후원일, 후원자명, 학번, 후원금액, 익명여부 · o만 익명 처리합니다.</span>
             {csvRows.length>0&&<div className="finance-manager-import-confirm">
-              <strong>추가 준비: {csvRows.length}건</strong><button type="button" className="button button-primary" disabled={busy} onClick={()=>void commitCsv()}>CSV {csvRows.length}건 추가</button>
+              <strong>추가 준비: {csvRows.length}건{csvRange&&` (${csvRange.start} ~ ${csvRange.end})`}</strong><button type="button" className="button button-primary" disabled={busy} onClick={()=>void commitCsv()}>CSV {csvRows.length}건 추가</button>
               <button type="button" className="outline-action" disabled={busy} onClick={()=>setCsvRows([])}>취소</button>
             </div>}
           </div>
@@ -138,14 +146,19 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           </div>
         </section>
         <section className="finance-manager-section">
-          <div className="finance-manager-heading"><div><h2>익명자 명단 관리</h2><p>학번이 있으면 학번으로 일치하는 모든 후원이 익명으로 표시됩니다. 학번 없이 이름만 입력한 대상은 학번 미확인 기록에만 적용됩니다.</p></div>
+          <div className="finance-manager-heading"><div><h2>익명자 명단 관리</h2><p>이름과 숫자 10자리 학번을 모두 등록해야 해당 학번의 모든 후원이 익명으로 표시됩니다. 저장된 인원은 확인만 가능하며, 제외한 후에는 명단을 다시 저장해 주세요.</p></div>
             <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>[...previous,{...blankPerson}]);setPeopleChanged(true);}}><Plus size={15}/> 익명자 추가</button>
           </div>
           <div className="finance-manager-anonymous-list">
             {people.length===0&&<p>익명자 명단이 비어 있습니다.</p>}
             {people.map((person,index)=><div key={index} className="finance-manager-anonymous-row">
-              <label>이름<input value={person.donorName} maxLength={80} placeholder="이름 (선택)" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));setPeopleChanged(true);}}/></label>
-              <label>학번<input value={person.studentId} maxLength={10} inputMode="numeric" placeholder="학번 (선택)" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));setPeopleChanged(true);}}/></label>
+              {isSavedPerson(person)?<>
+                <span className="finance-manager-anonymous-value"><small>이름</small><strong>{person.donorName}</strong></span>
+                <span className="finance-manager-anonymous-value"><small>학번</small><strong>{person.studentId}</strong></span>
+              </>:<>
+                <label>이름<input required value={person.donorName} maxLength={80} placeholder="이름" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));setPeopleChanged(true);}}/></label>
+                <label>학번<input required pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));setPeopleChanged(true);}}/></label>
+              </>}
               <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>previous.filter((_,i)=>i!==index));setPeopleChanged(true);}}>제외</button>
             </div>)}
           </div>
