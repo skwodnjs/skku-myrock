@@ -170,7 +170,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
       const updated = { ...editing, positions: splitMemberValues(positionText) };
       if (editMode === 'sessions') await saveMemberSessions(updated, updated.sessions);
       else if (editMode === 'details') await saveMemberDetails(updated);
-      else if (isPresident) await saveMemberPermissions(updated);
+      else if (isPresident) await saveMemberPermissions({ ...updated, handoverAccess: updated.role === 'member' && updated.handoverAccess });
       setMessage(`${editing.name} 부원의 정보를 저장했습니다.`);
       setEditing(null);
       await refresh();
@@ -259,13 +259,13 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
                 </>}
                 {editMode === 'permissions' && isPresident && <>
                   <label>운영 권한
-                    <select value={editing.role} onChange={event => setEditing(prev => prev ? {...prev,role:event.target.value as MemberRole} : prev)}>
+                    <select value={editing.role} onChange={event => setEditing(prev => prev ? {...prev,role:event.target.value as MemberRole,handoverAccess:event.target.value === 'member' && prev.handoverAccess} : prev)}>
                       {Object.entries(roleNames).map(([key,value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                   </label>
-                  <label className="member-handover-check"><input type="checkbox" checked={editing.handoverAccess} onChange={event => setEditing(prev => prev ? {...prev,handoverAccess:event.target.checked} : prev)}/>
-                    <span><strong>OB 운영진 · 인수인계 접근</strong><small>일반부원이며 이 항목에 체크된 경우 내 정보의 권한에 'OB 운영진'으로 표시됩니다. 부원 명단 조회 권한은 자동으로 생기지 않습니다.</small></span>
-                  </label>
+                  {editing.role === 'member' && <label className="member-handover-check"><input type="checkbox" checked={editing.handoverAccess} onChange={event => setEditing(prev => prev ? {...prev,handoverAccess:event.target.checked} : prev)}/>
+                    <span><strong>인수인계 내용 접근 권한 설정</strong><small>체크하면 해당 부원의 권한에 'OB 운영진'이라고 표시됩니다. 인수인계 내용에 접근할 수 있지만 다른 운영진 권한은 부여되지 않습니다.</small></span>
+                  </label>}
                   <p className="form-hint">본인과 시스템 관리자 계정의 권한은 변경할 수 없습니다.</p>
                 </>}
                 <div className="member-edit-actions">
