@@ -37,50 +37,46 @@ test('bank fields have no bottom padding at desktop and mobile widths', () => {
   assert.match(styles, /@media \(max-width:\s*680px\)[\s\S]*?\.finance-bank-fields\s*\{[^}]*padding:\s*20px 0 0;/);
 });
 
-test('anonymous donors are public as 익명 and their own donations are user-private after login', () => {
-  for (const phrase of [
-    '홍길동(비공개)',
-    '해당 후원 건의 익명 처리를 요청',
-    '전체 후원 내역',
-    '이름 대신 <b>익명</b>',
-    '모든 내역</b>을 익명 처리',
-    '익명 처리 여부와 관계없이',
-    '로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다',
-  ]) assert.ok(finance.includes(phrase), 'missing privacy copy: ' + phrase);
-  assert.doesNotMatch(finance, /모두에게 공개되는 <b>전체 후원 내역<\/b>/);
-  assert.doesNotMatch(finance, /실제 입금 내역을 계정과 연결하는 기능은 추후/);
-  // The two related anonymity sentences must be in one paragraph.
-  assert.match(finance, /익명<\/b>으로 표시됩니다\. 본인이 후원한 <b>모든 내역<\/b>을 익명 처리/);
-  assert.doesNotMatch(finance, /표시됩니다\.<\/p>\s*<p>본인이 후원한/);
-
-  const donation = finance.slice(finance.indexOf('export function DonationHistory'), finance.indexOf('export function ExpenseHistory'));
-  assert.match(donation, /loggedIn: boolean;/);
-  assert.match(donation, /authPending: boolean;/);
-  assert.match(donation, /authPending\s*\?\s*<FinanceEmpty/);
-  assert.match(donation, /loggedIn\s*\?\s*<div className="finance-record-table">/);
-  assert.match(donation, /onClick=\{onLogin\}/);
-  assert.match(donation, /로그인 후 확인할 수 있습니다/);
-  assert.match(donation, /전체 후원 내역/);
-  assert.match(donation, /내 후원 내역/);
+test('donations load sanitized public and student-specific histories and restrict staff manager button', () => {
+  assert.match(finance, /getPublicDonations\(\)/);
+  assert.match(finance, /getOwnDonations\(\)/);
+  assert.match(finance, /canManageDonations&&<div className="finance-manager-entry">/);
+  assert.match(finance, /onClick=\{onManage\}/);
+  assert.match(finance, /finance-personal-columns"><span>후원일<\/span><span>후원 금액<\/span>/);
+  assert.doesNotMatch(finance, /<span>후원 내역<\/span>/);
+  assert.match(finance, /row\.donorName/);
+  assert.match(finance, /row\.amount/);
+  assert.match(finance, /authPending\?/);
+  assert.match(finance, /loggedIn\?<div className="finance-record-table">/);
+  assert.match(finance, /onClick=\{onLogin\}/);
 });
-test('finance pages are shells with no mocked donor/expense data or direct database access', () => {
-  assert.doesNotMatch(finance, /firestore|firebase|collection\(|getDocs\(|fetch\(/i);
-  assert.match(finance, /후원 기록 연결 예정/);
-  assert.match(finance, /내 후원 내역 연결 예정/);
-  assert.match(finance, /회비 집행 기록 연결 예정/);
-  assert.match(finance, /집행일/);
-  assert.match(finance, /사용 항목/);
-  assert.match(finance, /금액/);
-});
-test('nested finance routes survive direct URLs, navigation, and browser back/forward', () => {
-  assert.match(app, /\| 'finance' \| 'donations' \| 'expenses'/);
-  assert.match(app, /page === 'donations' \|\| page === 'expenses' \? \x60\/finance\/\$\{page\}\x60/);
-  assert.match(app, /\/\^\\\/finance\\\/donations\\\/\?\$\//);
-  assert.match(app, /\/\^\\\/finance\\\/expenses\\\/\?\$\//);
+test('finance management uses separate protected route, not the public list', () => {
+  assert.match(app, /\| 'finance' \| 'donations' \| 'donation-manage' \| 'expenses'/);
+  assert.match(app, /page === 'donation-manage' \? '\/finance\/donations\/manage'/);
+  assert.match(app, /return 'donation-manage'/);
+  assert.match(app, /canManageDonations=currentLevel==='staff'\|\|currentLevel==='president'/);
+  assert.match(app, /<DonationManagement onBack=\{\(\)=>navigate\('donations'\)\}/);
   assert.match(app, /window\.addEventListener\('popstate',onPop\)/);
   assert.match(app, /<FinanceLanding onDonations=\{\(\) => navigate\('donations'\)\} onExpenses=\{\(\) => navigate\('expenses'\)\}\/>/);
-  assert.match(app, /<DonationHistory onBack=\{\(\) => navigate\('finance'\)\} loggedIn=\{Boolean\(user\)\} authPending=\{authPending\} onLogin=\{showLogin\}\/>/);
   assert.match(app, /<ExpenseHistory onBack=\{\(\) => navigate\('finance'\)\}\/>/);
+  assert.match(app, /후원회계 초기화/);
+  assert.match(app, /void resetDonationFinance\(\)/);
+});
+test('server-only sensitive ledger operations and accessible manager actions remain distinct', async () => {
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  const api=await readFile(new URL('../src/donationApi.ts',import.meta.url),'utf8');
+  const publicRoute=await readFile(new URL('../functions/api/donations/public.js',import.meta.url),'utf8');
+  const mineRoute=await readFile(new URL('../functions/api/donations/mine.js',import.meta.url),'utf8');
+  const managementRoute=await readFile(new URL('../functions/api/donations/manage.js',import.meta.url),'utf8');
+  for(const phrase of ['개별 추가','CSV 파일 선택','전체 CSV 다운로드','익명자 명단 관리','익명자 명단 저장','수정','실무단 이상']){
+    assert.ok(manager.includes(phrase),phrase);
+  }
+  assert.match(api,/auth.currentUser\?\.getIdToken\(\)/);
+  assert.match(publicRoute,/publicDonation\(record,registry.people\)/);
+  assert.match(mineRoute,/record.studentId === studentId/);
+  assert.match(managementRoute,/assertAccess\(request,env,'staff'\)/);
+  assert.doesNotMatch(finance,/getDocs\(|collection\(/);
+  assert.match(finance,/회비 집행 기록 연결 예정/);
 });
 test('three finance pages retain mobile-friendly layouts', () => {
   assert.match(styles, /\.finance-entry-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);

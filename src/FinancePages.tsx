@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react';
+import { getOwnDonations, getPublicDonations } from './donationApi';
+import { displayAmount, displayDate } from './donationData';
+import type { OwnDonation, PublicDonation } from './donationData';
 import { ArrowLeft, ArrowRight, ArrowUpRight, ClipboardList, HeartHandshake, LockKeyhole, Wallet } from 'lucide-react';
 
 type Nav = () => void;
@@ -90,56 +94,75 @@ function FinanceEmpty({ title, description }: { title: string; description: stri
 }
 
 export function DonationHistory({
-  onBack, loggedIn, authPending, onLogin,
+  onBack, loggedIn, authPending, onLogin, canManageDonations, onManage,
 }: {
-  onBack: Nav;
-  loggedIn: boolean;
-  authPending: boolean;
-  onLogin: Nav;
+  onBack: Nav; loggedIn: boolean; authPending: boolean; onLogin: Nav;
+  canManageDonations: boolean; onManage: Nav;
 }) {
+  const [all,setAll]=useState<PublicDonation[]>([]);
+  const [mine,setMine]=useState<OwnDonation[]>([]);
+  const [allError,setAllError]=useState('');
+  const [mineError,setMineError]=useState('');
+  const [loadingAll,setLoadingAll]=useState(true);
+  const [loadingMine,setLoadingMine]=useState(false);
+  useEffect(()=>{
+    let active=true;
+    void getPublicDonations().then(data=>{if(active)setAll(data.records);})
+      .catch(reason=>{if(active)setAllError(reason instanceof Error?reason.message:'후원 기록 조회 오류');})
+      .finally(()=>{if(active)setLoadingAll(false);});
+    return()=>{active=false;};
+  },[]);
+  useEffect(()=>{
+    let active=true;
+    if(authPending||!loggedIn){setMine([]);return()=>{active=false;};}
+    setLoadingMine(true);setMineError('');
+    void getOwnDonations().then(data=>{if(active)setMine(data.records);})
+      .catch(reason=>{if(active)setMineError(reason instanceof Error?reason.message:'내 후원 기록 조회 오류');})
+      .finally(()=>{if(active)setLoadingMine(false);});
+    return()=>{active=false;};
+  },[authPending,loggedIn]);
   return <>
     <FinanceHeading eyebrow="DONATION HISTORY" title="후원 내역"
       description="모여락에 보내주신 소중한 응원을 확인하는 공간입니다." />
     <div className="container finance-details-content">
       <BackToFinance onBack={onBack} />
-
+      {canManageDonations&&<div className="finance-manager-entry"><button type="button" className="button button-primary" onClick={onManage}>후원 내역 관리 <ArrowRight size={15}/></button></div>}
       <section className="finance-record-section" aria-labelledby="all-donations-heading">
         <FinanceSectionTitle title="전체 후원 내역" description="누구나 확인할 수 있는 동아리 후원 기록입니다." />
         <p className="finance-record-description" id="all-donations-heading">
-          후원자 이름 공개를 원하지 않는 경우 이 목록에는 실명 대신 <b>익명</b>으로 표시합니다.
+          개별 익명 요청이나 익명자 명단에 포함된 기록, 후원자 정보가 확인되지 않은 기록은 <b>익명</b>으로 표시됩니다.
         </p>
         <div className="finance-record-table">
           <div className="finance-record-table-header finance-donations-columns">
             <span>후원일</span><span>후원자</span><span>후원 금액</span>
           </div>
-          <FinanceEmpty title="후원 기록 연결 예정"
-            description="현재는 화면 구성 단계로, 실제 후원 내역이나 금액을 표시하지 않습니다." />
+          {loadingAll?<FinanceEmpty title="후원 기록 조회 중" description="후원 내역을 불러오고 있습니다."/>:
+            allError?<FinanceEmpty title="후원 기록 조회 실패" description={allError}/>:
+            all.length===0?<FinanceEmpty title="등록된 후원 내역이 없습니다" description="운영진이 후원 내역을 등록하면 이곳에 표시됩니다."/>:
+            all.map(row=><div key={row.id} className="finance-record-row finance-donations-columns">
+              <span>{displayDate(row.date)}</span><span>{row.donorName}</span><span>{displayAmount(row.amount)}</span>
+            </div>)}
         </div>
       </section>
-
       <section className="finance-record-section" aria-labelledby="my-donations-heading">
-        <FinanceSectionTitle title="내 후원 내역" description="로그인한 부원 본인의 후원 내역을 확인하는 공간입니다." />
+        <FinanceSectionTitle title="내 후원 내역" description="로그인한 부원의 학번에 연결된 기록만 표시합니다." />
         <div className="finance-personal-note" id="my-donations-heading">
           <LockKeyhole size={17} aria-hidden="true"/>
-          <span>개별 후원을 익명 처리하거나 모든 후원 내역을 익명 처리하더라도, 본인이 후원한 내역은 로그인 후 <b>내 후원 내역</b>에서 확인할 수 있습니다.</span>
+          <span>후원 기록이 익명으로 표시되어도 본인 학번으로 확인된 모든 내역을 조회할 수 있습니다.</span>
         </div>
-        {authPending ? <FinanceEmpty title="로그인 상태 확인 중"
-          description="본인 확인이 완료되면 내 후원 내역 영역을 보여드립니다." /> :
-          loggedIn ? <div className="finance-record-table">
-            <div className="finance-record-table-header finance-personal-columns">
-              <span>후원일</span><span>후원 내역</span><span>후원 금액</span>
-            </div>
-            <FinanceEmpty title="내 후원 내역 연결 예정"
-              description="현재는 실제 후원 내역을 불러오지 않습니다. 후원 내역 확인·계정 연결 기능은 추후 제공할 예정입니다." />
-          </div> :
-          <div className="finance-login-gate">
-            <LockKeyhole size={24} aria-hidden="true" />
-            <div><strong>내 후원 내역은 로그인 후 확인할 수 있습니다.</strong>
-              <p>개인별 후원 내역은 본인만 조회할 수 있도록 연결할 예정입니다.</p>
-            </div>
-            <button type="button" className="button button-primary" onClick={onLogin}>
-              로그인 <ArrowRight size={15} aria-hidden="true"/>
-            </button>
+        {authPending?<FinanceEmpty title="로그인 상태 확인 중" description="본인 확인 후 내역을 불러옵니다."/>:
+          loggedIn?<div className="finance-record-table">
+            <div className="finance-record-table-header finance-personal-columns"><span>후원일</span><span>후원 금액</span></div>
+            {loadingMine?<FinanceEmpty title="내 후원 기록 조회 중" description="본인 학번으로 조회하고 있습니다."/>:
+              mineError?<FinanceEmpty title="내 후원 기록 조회 실패" description={mineError}/>:
+              mine.length===0?<FinanceEmpty title="내 후원 내역이 없습니다" description="현재 학번에 연결된 후원 기록이 없습니다."/>:
+              mine.map(row=><div key={row.id} className="finance-record-row finance-personal-columns">
+                <span>{displayDate(row.date)}</span><span>{displayAmount(row.amount)}</span>
+              </div>)}
+          </div>:
+          <div className="finance-login-gate"><LockKeyhole size={24} aria-hidden="true"/>
+            <div><strong>내 후원 내역은 로그인 후 확인할 수 있습니다.</strong><p>개인별 후원 내역은 로그인한 본인의 학번으로 확인합니다.</p></div>
+            <button type="button" className="button button-primary" onClick={onLogin}>로그인 <ArrowRight size={15}/></button>
           </div>}
       </section>
       <div className="finance-detail-footer"><BackToFinance onBack={onBack}/></div>
