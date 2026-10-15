@@ -305,3 +305,24 @@ test('management notice date keeps explicitly styled typography alongside author
   assert.match(app, /canWrite && <span className="notice-author-cell">\{post\.author\}<\/span>/);
   assert.match(styles, /\.notice-table-row>\.notice-date-cell\{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:400;line-height:1\.6;[^}]*color:#a4afab;white-space:nowrap;text-align:right\}/);
 });
+
+
+test('notice registration date heading and values share centered alignment', () => {
+  assert.match(app, /<span className="notice-date-cell">등록일<\/span>/);
+  assert.match(app, /<span className="notice-date-cell">\{post\.date\}<\/span>/);
+  assert.match(styles, /\.notice-table-head>\.notice-date-cell,\.notice-table-row>\.notice-date-cell\{text-align:center\}/);
+  assert.match(styles, /\.notice-table-row>\.notice-date-cell\{[^}]*text-align:right\}/);
+  assert.ok(styles.lastIndexOf('.notice-table-head>.notice-date-cell,.notice-table-row>.notice-date-cell{text-align:center}') >
+    styles.lastIndexOf(".notice-table-row>.notice-date-cell{font-family:"), 'center alignment overrides the older right alignment');
+  assert.match(styles, /\.notice-table-head\.has-author,\.notice-table-row\.has-author/);
+});
+
+test('desktop shows a star between slide number and filename, while mobile keeps it absent', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /<span className="notice-composer-gallery-image-number">\{imageIndex \+ 1\}번째 이미지<\/span>/);
+  assert.match(composer, /<span className="notice-composer-gallery-filename" title=\{image\.name\}>\{image\.name\}<\/span>/);
+  assert.match(styles, /\.notice-composer-gallery-image-number::after\{content:" \*";white-space:pre\}/);
+  assert.match(styles, /@media\(max-width:700px\)\{\.notice-composer-gallery-image-number::after\{content:none\}\}/);
+  assert.match(styles, /\.notice-composer-gallery-filename\{[^}]*text-overflow:ellipsis;white-space:nowrap/);
+  assert.match(styles, /\.notice-composer-gallery-file-label\{flex-direction:column;align-items:flex-start;gap:1px\}/);
+});
