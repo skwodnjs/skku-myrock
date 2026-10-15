@@ -252,17 +252,23 @@ test('gallery drag and accessible move buttons reorder underlying slides by stab
   assert.match(carousel, /setActiveId\(slide.id\)/);
 });
 
-test('restore original image pixel dimensions per image and enable aspect lock for single or gallery images', async () => {
+test('restore initial insertion dimensions and original aspect ratio per single or gallery image', async () => {
   const source = await readFile(new URL('../src/noticeImageSize.ts', import.meta.url), 'utf8');
   const js = typescript.transpileModule(source, { compilerOptions: { module: typescript.ModuleKind.ESNext,
     target: typescript.ScriptTarget.ES2022 } }).outputText;
-  const { restoreOriginalDimensions } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
-  assert.deepEqual(restoreOriginalDimensions({width:300,height:200,naturalWidth:2400,naturalHeight:1600}),{width:2400,height:1600});
-  assert.deepEqual(restoreOriginalDimensions({width:400,height:160,naturalWidth:0,naturalHeight:0}),{width:400,height:160});
+  const { initialImageDimensions, restoreInitialImageDimensions } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  assert.deepEqual(restoreInitialImageDimensions({width:300,height:200,naturalWidth:2400,naturalHeight:1600}),{width:800,height:533});
+  assert.deepEqual(restoreInitialImageDimensions({width:500,height:500,naturalWidth:1200,naturalHeight:2400}),{width:450,height:900});
+  assert.deepEqual(restoreInitialImageDimensions({width:200,height:100,naturalWidth:600,naturalHeight:400}),{width:600,height:400});
+  assert.deepEqual(restoreInitialImageDimensions({width:400,height:160,naturalWidth:0,naturalHeight:0}),{width:400,height:160});
+  const original = {width:320,height:180,naturalWidth:1920,naturalHeight:1080};
+  assert.deepEqual(restoreInitialImageDimensions(original), initialImageDimensions(original.naturalWidth,original.naturalHeight));
   const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
   assert.match(composer, /function restoreImageSize\(id: number\)/);
-  assert.match(composer, /restoreOriginalDimensions\(image\), ratioLocked: true/);
+  assert.match(composer, /restoreInitialImageDimensions\(image\), ratioLocked: true/);
   assert.match(composer, /disabled=\{!image.naturalWidth \|\| !image.naturalHeight\}/);
   assert.match(composer, /disabled=\{!block.naturalWidth \|\| !block.naturalHeight\}/);
-  assert.equal(composer.split('원본 크기 복원').length - 1, 2);
+  assert.equal(composer.split('원본 비율 복원').length - 1, 2);
+  assert.equal(composer.split('최초 삽입 크기와 원본 비율로 복원').length - 1, 2);
+  assert.doesNotMatch(composer, /원본 크기 복원|restoreOriginalDimensions/);
 });

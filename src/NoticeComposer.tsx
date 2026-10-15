@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, ImagePlus, Link, Link2Off, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import type { NoticeCategory } from './noticesData';
-import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions, restoreOriginalDimensions } from './noticeImageSize';
+import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions, restoreInitialImageDimensions } from './noticeImageSize';
 import { reorderGalleryImages, shiftGalleryImage } from './noticeGalleryOrder';
 import type { DimensionAxis } from './noticeImageSize';
 import NoticeImageCarousel from './NoticeImageCarousel';
@@ -103,7 +103,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   }
   function restoreImageSize(id: number) {
     const restore = (image: ImageBlock): ImageBlock => image.id === id
-      ? { ...image, ...restoreOriginalDimensions(image), ratioLocked: true } : image;
+      ? { ...image, ...restoreInitialImageDimensions(image), ratioLocked: true } : image;
     setBlocks(previous => previous.map(block => block.kind === 'gallery'
       ? { ...block, images: block.images.map(restore) } : block.kind === 'image' ? restore(block) : block));
   }
@@ -243,8 +243,8 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                       <span>px</span>
                     </label>
                     <button type="button" className="notice-composer-original-size" onClick={() => restoreImageSize(image.id)}
-                      disabled={!image.naturalWidth || !image.naturalHeight} title="파일의 원본 픽셀 크기로 복원">
-                      <RotateCcw size={14}/> 원본 크기 복원
+                      disabled={!image.naturalWidth || !image.naturalHeight} title="최초 삽입 크기와 원본 비율로 복원">
+                      <RotateCcw size={14}/> 원본 비율 복원
                     </button>
                   </div>
                 </div>)}
@@ -276,8 +276,8 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                   <span>px</span>
                 </label>
                 <button type="button" className="notice-composer-original-size" onClick={() => restoreImageSize(block.id)}
-                  disabled={!block.naturalWidth || !block.naturalHeight} title="파일의 원본 픽셀 크기로 복원">
-                  <RotateCcw size={14}/> 원본 크기 복원
+                  disabled={!block.naturalWidth || !block.naturalHeight} title="최초 삽입 크기와 원본 비율로 복원">
+                  <RotateCcw size={14}/> 원본 비율 복원
                 </button>
               </div>
               <label className="outline-action notice-composer-file notice-composer-gallery-add"><ImagePlus size={15}/> 슬라이드로 사진 추가
