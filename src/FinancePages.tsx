@@ -72,7 +72,7 @@ export function FinanceLanding({ onDonations, onExpenses, canEditAccount }: { on
 
     <section className="container section-block finance-donation-account" data-async-busy={busy ? "true" : undefined}>
       <div className="finance-account-heading"><FinanceSectionTitle title="후원 계좌 안내" description="후원을 원하시는 분을 위한 계좌 안내입니다." />
-        {canEditAccount&&!editing&&<button type="button" className="outline-action" disabled={busy} onClick={()=>void beginEdit()}>정보 수정</button>}
+        {canEditAccount&&!editing&&<button type="button" className="admin-only-action" disabled={busy} onClick={()=>void beginEdit()}>정보 수정</button>}
       </div>
       {error&&<p className="form-error" role="alert">{error}</p>}
       <div className="finance-bank-card">
@@ -177,7 +177,7 @@ export function DonationHistory({
       description="모여락에 보내주신 소중한 응원을 확인하는 공간입니다." />
     <div className="container finance-details-content">
       <BackToFinance onBack={onBack} />
-      {canManageDonations&&<div className="finance-manager-entry"><button type="button" className="button button-primary" onClick={onManage}>후원 내역 관리 <ArrowRight size={15}/></button></div>}
+      {canManageDonations&&<div className="finance-manager-entry"><button type="button" className="admin-only-action" onClick={onManage}>후원 내역 관리 <ArrowRight size={15}/></button></div>}
       <section className="finance-record-section" aria-labelledby="all-donations-heading">
         <FinanceSectionTitle title="전체 후원 내역" description="누구나 확인할 수 있는 동아리 후원 기록입니다." />
         <p className="finance-record-description" id="all-donations-heading">
@@ -239,7 +239,7 @@ export function ExpenseHistory({ onBack, canManageExpenses, onManage }: {
       description="동아리 계좌의 입금·출금 거래 내역을 투명하게 공개합니다." />
     <div className="container finance-details-content">
       <BackToFinance onBack={onBack}/>
-      {canManageExpenses&&<div className="finance-manager-entry"><button type="button" className="button button-primary" onClick={onManage}>회비 집행 내역 관리 <ArrowRight size={15}/></button></div>}
+      {canManageExpenses&&<div className="finance-manager-entry"><button type="button" className="admin-only-action" onClick={onManage}>회비 집행 내역 관리 <ArrowRight size={15}/></button></div>}
       <section className="finance-record-section">
         <FinanceSectionTitle title="회비 집행 기록" description="입금과 출금을 포함한 전체 거래 내역입니다."/>
         <div className="finance-record-table finance-transaction-scroll">
