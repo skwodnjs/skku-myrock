@@ -22,15 +22,17 @@ test('finance landing introduces donations before account instructions and trans
   assert.match(landing, /onClick=\{onDonations\}/);
   assert.match(landing, /onClick=\{onExpenses\}/);
 });
-test('account is explicitly unconfigured and never advertises an invented payable account', () => {
-  assert.doesNotMatch(finance, /계좌 정보 등록 예정|finance-bank-pending/);
-  assert.match(finance, /<span>은행<\/span><strong>등록 예정<\/strong>/);
-  assert.match(finance, /<span>계좌번호<\/span><strong>등록 예정<\/strong>/);
-  assert.match(finance, /<span>예금주<\/span><strong>등록 예정<\/strong>/);
-  assert.match(styles, /\.finance-privacy-note\s*\{[^}]*margin-top:\s*24px;/s);
-  assert.doesNotMatch(styles, /\.finance-bank-pending\s*\{/);
-  assert.doesNotMatch(finance, /후원 계좌가 아직 등록되지 않았습니다|입금 전 운영진에게 계좌 정보를 확인해 주세요/);
-  assert.ok(!/\b\d{2,4}-\d{2,6}-\d{3,9}\b/.test(finance));
+test('bank account defaults to the requested Nonghyup account and president-only account form',async()=>{
+  const financeTypes=await readFile(new URL('../src/financeTransactions.ts',import.meta.url),'utf8');
+  assert.match(financeTypes,/bank:'농협',number:'302-0000-0000-31',holder:'나재원'/);
+  assert.match(finance,/canEditAccount&&!editing&&<button/);
+  assert.match(finance,/readAccountForManagement\(\)/);
+  assert.match(finance,/saveDonationAccount\(editing,version\)/);
+  assert.match(app,/canEditAccount=\{Boolean\(user&&!authPending&&currentLevel==='president'\)\}/);
+  assert.match(finance,/<strong>\{account.bank\}<\/strong>/);
+  assert.match(finance,/<strong>\{account.number\}<\/strong>/);
+  assert.match(finance,/<strong>\{account.holder\}<\/strong>/);
+  assert.match(styles,/\.finance-privacy-note\s*\{[^}]*margin-top:\s*24px;/s);
 });
 test('bank fields have no bottom padding at desktop and mobile widths', () => {
   assert.match(styles, /\.finance-bank-fields\s*\{[^}]*padding:\s*28px 0 0;/s);
@@ -51,14 +53,14 @@ test('donations load sanitized public and student-specific histories and restric
   assert.match(finance, /onClick=\{onLogin\}/);
 });
 test('finance management uses separate protected route, not the public list', () => {
-  assert.match(app, /\| 'finance' \| 'donations' \| 'donation-manage' \| 'expenses'/);
+  assert.match(app, /\| 'finance' \| 'donations' \| 'donation-manage' \| 'expenses' \| 'expense-manage'/);
   assert.match(app, /page === 'donation-manage' \? '\/finance\/donations\/manage'/);
   assert.match(app, /return 'donation-manage'/);
   assert.match(app, /canManageDonations=currentLevel==='staff'\|\|currentLevel==='president'/);
   assert.match(app, /<DonationManagement onBack=\{\(\)=>navigate\('donations'\)\}/);
   assert.match(app, /window\.addEventListener\('popstate',onPop\)/);
-  assert.match(app, /<FinanceLanding onDonations=\{\(\) => navigate\('donations'\)\} onExpenses=\{\(\) => navigate\('expenses'\)\}\/>/);
-  assert.match(app, /<ExpenseHistory onBack=\{\(\) => navigate\('finance'\)\}\/>/);
+  assert.match(app, /<FinanceLanding onDonations=\{\(\) => navigate\('donations'\)\} onExpenses=\{\(\) => navigate\('expenses'\)\} canEditAccount=/);
+  assert.match(app, /<ExpenseHistory onBack=\{\(\) => navigate\('finance'\)\} canManageExpenses=/);
   assert.match(app, /후원회계 초기화/);
   assert.match(app, /void resetDonationFinance\(\)/);
 });
@@ -76,7 +78,9 @@ test('server-only sensitive ledger operations and accessible manager actions rem
   assert.match(mineRoute,/record.studentId === studentId/);
   assert.match(managementRoute,/assertAccess\(request,env,'staff'\)/);
   assert.doesNotMatch(finance,/getDocs\(|collection\(/);
-  assert.match(finance,/회비 집행 기록 연결 예정/);
+  assert.match(finance,/회비 집행 기록/);
+  assert.match(finance,/readExpenses\(\)/);
+  assert.match(finance,/거래일시<\/span><span>거래구분<\/span><span>거래금액<\/span><span>거래 후 잔액<\/span><span>거래내용/);
 });
 test('three finance pages retain mobile-friendly layouts', () => {
   assert.match(styles, /\.finance-entry-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
@@ -137,4 +141,32 @@ test('anonymous registry requires full identity and saved rows are read-only unt
   assert.match(manager,/saveAnonymousPeople\(cleaned,data.registryUpdateTime\)/);
   assert.match(server,/!donorName \|\| donorName.length > 80/);
   assert.doesNotMatch(manager,/placeholder="이름 \(선택\)"/);
+});
+
+
+test('donation edits use only inline row fields and remove the private disclosure note',async()=>{
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  assert.doesNotMatch(finance,/후원 기록이 익명으로 표시되어도 본인 학번으로 확인된 모든 내역을 조회할 수 있습니다/);
+  assert.match(manager,/editing\?\.id===record.id\?/);
+  for(const label of ['후원일 수정','후원자명 수정','학번 수정','후원금액 수정','익명여부 수정']){
+    assert.ok(manager.includes(label),label);
+  }
+  assert.match(manager,/onClick=\{\(\)=>void persist\(\)\}/);
+  assert.match(manager,/onClick=\{\(\)=>setEditing\(null\)\}>취소/);
+  assert.match(manager,/editing&&!editing.id&&<form/);
+});
+test('transaction manager accepts manual row additions and edits, CSV export only',async()=>{
+  const manager=await readFile(new URL('../src/ExpenseManagement.tsx',import.meta.url),'utf8');
+  const client=await readFile(new URL('../src/financeTransactions.ts',import.meta.url),'utf8');
+  assert.match(app,/return 'expense-manage'/);
+  assert.match(app,/page==='expense-manage'/);
+  assert.match(app,/user&&canManageDonations\?<ExpenseManagement/);
+  for(const label of ['거래일시','거래구분','거래금액','거래 후 잔액','거래내용','CSV 다운로드','수정','취소']){
+    assert.ok(manager.includes(label),label);
+  }
+  assert.match(manager,/finance-inline-edit/);
+  assert.match(client,/TRANSACTION_COLUMNS=\['거래일시','거래구분','거래금액','거래 후 잔액','거래내용'\]/);
+  assert.doesNotMatch(manager,/type="file"|onChange=\{.*chooseCsv/);
+  assert.match(client,/downloadTransactions/);
+  assert.match(styles,/\.finance-transaction-scroll>/);
 });
