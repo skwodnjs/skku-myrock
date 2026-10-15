@@ -222,7 +222,8 @@ test('append photos to an existing single image or slideshow, preserving per-ima
   assert.match(composer, /if \(block.kind === 'image'\) return \{ id: block.id, kind: 'gallery', images: \[block, \.\.\.newImages\] \}/);
   assert.match(composer, /if \(block.kind === 'gallery'\) return \{ \.\.\.block, images: \[\.\.\.block.images, \.\.\.newImages\] \}/);
   assert.match(composer, /selected.length \+ existingCount > 20/);
-  assert.match(composer, /onChange=\{event => addImages\(event, block.id\)\}/);
+  assert.match(composer, /onClick=\{\(\)=>toggleImagePicker\(block.id\)\}/);
+  assert.match(composer, /onChange=\{event=>addImages\(event,targetBlockId\)\}/);
   assert.match(composer, /슬라이드로 사진 추가/);
   assert.match(composer, /슬라이드에 사진 추가/);
   assert.match(composer, /naturalWidth: 0, naturalHeight: 0/);
@@ -326,4 +327,24 @@ test('desktop shows a centered dot between slide number and filename, while mobi
   assert.doesNotMatch(styles, /\.notice-composer-gallery-image-number::after\{content:" \*"/);
   assert.match(styles, /\.notice-composer-gallery-filename\{[^}]*text-overflow:ellipsis;white-space:nowrap/);
   assert.match(styles, /\.notice-composer-gallery-file-label\{flex-direction:column;align-items:flex-start;gap:1px\}/);
+});
+
+
+test('notice image insertion expands URL and multi-file controls but never uploads to the server',async()=>{
+  const composer=await readFile(new URL('../src/NoticeComposer.tsx',import.meta.url),'utf8');
+  assert.match(composer,/const \[newImagePickerOpen,setNewImagePickerOpen\]=useState\(false\)/);
+  assert.match(composer,/const \[slidePickerId,setSlidePickerId\]=useState<number\|null>\(null\)/);
+  assert.match(composer,/function imagePicker\(targetBlockId\?:number\)/);
+  assert.match(composer,/type="url" placeholder="https:\/\/example.com\/photo.jpg"/);
+  assert.match(composer,/URL 이미지 추가/);
+  assert.match(composer,/파일 업로드/);
+  assert.match(composer,/multiple/);
+  assert.match(composer,/selected.length > 1/);
+  assert.match(composer,/addUrlImage\(targetBlockId\)/);
+  assert.match(composer,/setNewImagePickerOpen\(false\)/);
+  assert.match(composer,/setSlidePickerId\(null\)/);
+  assert.match(composer,/newImagePickerOpen&&imagePicker\(\)/);
+  assert.match(composer,/slidePickerId===block.id&&imagePicker\(block.id\)/);
+  assert.match(styles,/\.notice-composer-image-picker\{/);
+  assert.doesNotMatch(composer,/uploadAboutImage|\/api\/about\/image|uploadBytes|addDoc\(/);
 });
