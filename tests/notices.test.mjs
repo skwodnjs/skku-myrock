@@ -101,3 +101,27 @@ test('article content is not fetched from a database and wraps original line bre
   assert.match(styles, /\.notice-detail-photo-placeholder\s*\{/);
   assert.match(styles, /@media \(max-width:\s*700px\)/);
 });
+
+
+test('only management roles see the writing action and direct compose routes enforce access', () => {
+  assert.match(app, /function News\(\{ canWrite, onWrite, openNotice \}/);
+  assert.match(app, /\{canWrite && <button type="button" className="button button-primary" onClick=\{onWrite\}>/);
+  assert.match(app, /canWrite=\{Boolean\(user && !authPending && currentLevel\)\}/);
+  assert.match(app, /page==='notice-compose'&&\(authPending \?/);
+  assert.match(app, /user && currentLevel \? <NoticeComposer/);
+  assert.match(app, /page === 'notice-compose' \? '\/news\/write'/);
+  assert.match(app, /return match && match\[1\] !== 'write'/);
+  assert.match(app, /return 'notice-compose'/);
+  assert.doesNotMatch(app, /글쓰기는 추후 연결할 예정입니다/);
+});
+test('plain notice composer supports editable title, text blocks and inserted images without publishing', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  for (const token of ['공지사항 글쓰기', '제목', '본문', '이미지 추가', '본문 추가', '미리보기',
+    'type="file"', 'accept="image/png,image/jpeg,image/webp,image/gif"', 'URL.createObjectURL',
+    'URL.revokeObjectURL', 'moveBlock', 'removeBlock', '<textarea', '게시글은 저장되지 않습니다']) {
+    assert.ok(composer.includes(token), 'Composer missing: ' + token);
+  }
+  assert.doesNotMatch(composer, /contentEditable|document\.execCommand|fontSize|fontWeight|setDoc\(|addDoc\(|updateDoc\(/);
+  assert.match(styles, /\.notice-composer-blocks\s*\{/);
+  assert.match(styles, /\.notice-composer-preview\s*\{/);
+});
