@@ -19,3 +19,10 @@ export function resizeImageDimensions(size: ImageDimensions, axis: DimensionAxis
     ? { width: Math.max(1, Math.round(MAX_IMAGE_DIMENSION * ratio)), height: MAX_IMAGE_DIMENSION }
     : { width: MAX_IMAGE_DIMENSION, height: Math.max(1, Math.round(MAX_IMAGE_DIMENSION / ratio)) };
 }
+
+
+export function restoreOriginalDimensions(image: ImageDimensions & { naturalWidth: number; naturalHeight: number }): ImageDimensions {
+  return image.naturalWidth > 0 && image.naturalHeight > 0
+    ? { width: image.naturalWidth, height: image.naturalHeight }
+    : { width: image.width, height: image.height };
+}

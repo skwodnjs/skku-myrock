@@ -1509,3 +1509,21 @@
 .notice-composer-publish .button:disabled{opacity:.5;cursor:not-allowed;background:var(--accent-dark)}
 .notice-composer-publish span{color:#86988b;font-size:11px;line-height:1.7}
 @media(max-width:520px){.notice-slide-arrow{width:29px;height:37px}.notice-slide-arrow.previous{left:4px}.notice-slide-arrow.next{right:4px}}
+
+
+/* Inline gallery editing, drag handles and original pixel size restoration. */
+.notice-composer-gallery-add{align-self:flex-start}
+.notice-composer-gallery-size-row{transition:background-color .12s,border-color .12s}
+.notice-composer-gallery-size-row.is-drop-target{background:#f1f8f2;border-top-color:#438c62}
+.notice-composer-gallery-size-heading{justify-content:flex-start}
+.notice-composer-gallery-size-heading>strong{flex:1;min-width:0}
+.notice-composer-gallery-drag-handle,.notice-composer-gallery-order-actions button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:0 0 auto;padding:0;border:1px solid #d6e0d8;background:#fff;color:#668173;cursor:pointer}
+.notice-composer-gallery-drag-handle{cursor:grab;touch-action:none}
+.notice-composer-gallery-drag-handle:active{cursor:grabbing}
+.notice-composer-gallery-drag-handle:focus-visible,.notice-composer-gallery-order-actions button:focus-visible,.notice-composer-original-size:focus-visible{outline:2px solid #6a9c7d;outline-offset:2px}
+.notice-composer-gallery-order-actions{display:flex;gap:4px;align-items:center;margin-left:auto}
+.notice-composer-gallery-order-actions button:disabled{opacity:.35;cursor:default}
+.notice-composer-gallery-thumb{width:42px;height:42px;max-height:none;object-fit:cover;flex:0 0 auto;border:1px solid #dae7dd}
+.notice-composer-original-size{display:inline-flex;gap:6px;align-items:center;justify-content:center;height:36px;padding:0 10px;border:1px solid #cbded3;background:#fff;color:#4a7760;font-size:11px;cursor:pointer}
+.notice-composer-original-size:disabled{opacity:.4;cursor:default}
+@media(max-width:520px){.notice-composer-gallery-size-heading{flex-wrap:wrap}.notice-composer-gallery-order-actions{margin-left:0}.notice-composer-gallery-thumb{width:35px;height:35px}}
