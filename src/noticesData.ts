@@ -16,6 +16,7 @@ export type NoticePost = {
 // Hardcoded notice archive, newest publication date first.
 // Author names are temporary demo assignments (two notices per person), not verified historical authors.
 // Preserve the original notice wording, dates and line breaks as provided.
+// The 29.5th recruit notice uses four swipeable empty image slots until real files are provided.
 // When media storage is introduced, replace null image slots with image URLs.
 export const notices: readonly NoticePost[] = [
   {
@@ -26,7 +27,7 @@ export const notices: readonly NoticePost[] = [
     date: '2026. 08. 28.',
     title: '🎸중앙동아리 밴드 모여락 29.5기 신입부원 모집🎸',
     description: '모여락 29.5기 신입부원 모집 · 보컬/기타/베이스/키보드/드럼 세션 모집',
-    images: [null],
+    images: [null, null, null, null],
     body: `※ 모여락 29.5기 신입부원 모집※
 보컬/기타/베이스/키보드/드럼 세션 모집
 

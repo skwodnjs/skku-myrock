@@ -29,7 +29,7 @@ test('each notice has a leading image placeholder, with no images downloaded yet
   assert.ok(notices.every(post => post.images.length >= 1));
   assert.ok(notices.every(post => post.images.every(src => src === null)));
   assert.match(app, /notice\.images\.map\(\(src, index\) =>/);
-  assert.match(app, /notice-detail-photo-placeholder/);
+  assert.match(app, /<NoticeImageCarousel key=\{notice\.id\}/);
   assert.match(app, /notice-detail-images[\s\S]*?notice-detail-body/);
 });
 test('recruitment notice preserves schedule, classes, auditions, questions and contact info', () => {
@@ -167,4 +167,50 @@ test('editor and preview size selected images with the same viewport-responsive 
   assert.match(styles, /\.notice-composer-image-stage,\.notice-composer-preview-image\{[^}]*position:relative;[^}]*max-width:100%;[^}]*overflow:hidden/);
   assert.match(styles, /\.notice-composer-image-stage>\.notice-composer-resized-image,\.notice-composer-preview-image>\.notice-composer-resized-image\{[^}]*position:absolute;inset:0;[^}]*width:100%;height:100%;[^}]*max-height:none;[^}]*object-fit:fill/);
   assert.match(styles, /\.notice-composer-image img\s*\{[^}]*max-height:\s*440px;/s);
+});
+
+
+test('first recruitment notice has four swipeable empty slides, others remain single-image placeholders', async () => {
+  assert.deepEqual(notices.map(post => post.images.length), [4, 1, 1, 1]);
+  assert.ok(notices[0].images.every(image => image === null));
+  const carousel = await readFile(new URL('../src/NoticeImageCarousel.tsx', import.meta.url), 'utf8');
+  for (const marker of ['galleryFrame(slides)', 'slideDimensions(active)', 'onTouchStart', 'onTouchEnd',
+    "event.key === 'ArrowLeft'", "event.key === 'ArrowRight'", 'notice-slide-arrow previous',
+    'notice-slide-arrow next', 'notice-slide-pagination', 'notice-slide-dots', 'aria-live="polite"']) {
+    assert.ok(carousel.includes(marker), 'Carousel missing ' + marker);
+  }
+  assert.match(styles, /\.notice-slide-viewport\{[^}]*max-width:100%;[^}]*touch-action:pan-y/);
+  assert.match(styles, /\.notice-slide-media\{[^}]*position:absolute;top:50%;left:50%/);
+  assert.match(styles, /\.notice-slide-media>\.notice-detail-photo-placeholder\{[^}]*height:100%;min-height:0;/);
+});
+
+test('gallery frame is sized to maximum width and height across all slides, independently of active slide', async () => {
+  const code = await readFile(new URL('../src/noticeCarouselSizing.ts', import.meta.url), 'utf8');
+  const js = typescript.transpileModule(code, { compilerOptions: {
+    module: typescript.ModuleKind.ESNext, target: typescript.ScriptTarget.ES2022,
+  } }).outputText;
+  const { galleryFrame, slideDimensions } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const wide = { width: 670, height: 220 };
+  const tall = { width: 280, height: 900 };
+  const sizes = [wide, tall, { width: 430, height: 570 }];
+  assert.deepEqual(galleryFrame(sizes), { width: 670, height: 900 });
+  assert.deepEqual(galleryFrame([...sizes].reverse()), { width: 670, height: 900 });
+  assert.deepEqual(slideDimensions({ width: 400, height: 300 }), { width: 400, height: 300 });
+  assert.deepEqual(slideDimensions({ width: 0, height: 0 }), { width: 320, height: 240 });
+  assert.deepEqual(galleryFrame([]), { width: 1, height: 1 });
+});
+
+test('multi-selection is grouped into one carousel, preserves per-image resizing and has disabled publish shell', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /selected\.length > 1\s*\?\s*\{ id: nextId\.current\+\+, kind: 'gallery', images: newImages \}/);
+  assert.match(composer, /block\.kind === 'gallery' \? <div className="notice-composer-gallery">/);
+  assert.match(composer, /block\.kind === 'gallery'[\s\S]*?<NoticeImageCarousel key=\{block\.id\}/);
+  assert.match(composer, /gallerySlides\(block\.images\)/);
+  assert.match(composer, /image\.id === id \? \{ \.\.\.image, \.\.\.resizeImageDimensions/);
+  assert.match(composer, /image\.id === id \? \{ \.\.\.image, ratioLocked: !image\.ratioLocked/);
+  assert.match(composer, /removeSlide\(block\.id, image\.id\)/);
+  assert.match(composer, /new Image\(\)/);
+  assert.match(composer, /className="notice-composer-publish"/);
+  assert.match(composer, /<button type="button" className="button button-primary" disabled title="발행 기능은 추후 연결됩니다.">발행 \(준비 중\)<\/button>/);
+  assert.doesNotMatch(composer, /onClick=\{.*publish|uploadBytes|uploadString|setDoc\(|addDoc\(/);
 });
