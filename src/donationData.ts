@@ -6,7 +6,7 @@ export type AnonymousPerson = { donorName: string; studentId: string };
 export const DONATION_HEADERS = ['후원일', '후원자명', '학번', '후원금액', '익명여부'] as const;
 export const EMPTY_DONATION: DonationInput = {date:'',donorName:'',studentId:'',amount:'',anonymous:'x'};
 
-function readCsv(input: string): string[][] {
+export function readCsv(input: string): string[][] {
   const rows: string[][] = [];let row:string[] = [];let cell = '';let quoted=false;let closed=false;
   const text = input.replace(/^\uFEFF/,'');
   const pushCell = () => {row.push(cell);cell='';closed=false;};

@@ -1,7 +1,8 @@
 import { useEffect,useState } from 'react';
-import { ArrowLeft,Download,Plus,Save } from 'lucide-react';
+import type { ChangeEvent } from 'react';
+import { ArrowLeft,Download,Plus,Save,Upload } from 'lucide-react';
 import { downloadTransactions,EMPTY_TRANSACTION,formatTransactionDate,formatWon,
-  readExpensesForManagement,saveExpense,validateTransaction } from './financeTransactions';
+  readExpensesForManagement,saveExpense,validateTransaction,parseTransactionCsv,transactionCsvDateRange,transactionCsvExample,importExpenses } from './financeTransactions';
 import type { FinanceTransaction,FinanceTransactionInput } from './financeTransactions';
 
 type EditState={id?:string;updateTime?:string;record:FinanceTransactionInput};
@@ -14,6 +15,8 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
   const [message,setMessage]=useState('');
   const [add,setAdd]=useState<EditState|null>(null);
   const [editing,setEditing]=useState<EditState|null>(null);
+  const [csvRows,setCsvRows]=useState<FinanceTransactionInput[]>([]);
+  const csvRange=transactionCsvDateRange(csvRows);
   useEffect(()=>{
     let active=true;
     void readExpensesForManagement().then(data=>{if(active)setRecords(data.records);})
@@ -48,6 +51,40 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
     window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
+  async function chooseCsv(event:ChangeEvent<HTMLInputElement>){
+    const file=event.target.files?.[0];event.target.value='';
+    if(!file)return;
+    setError('');setMessage('');setCsvRows([]);
+    if(file.size>200000){setError('CSV 파일은 200KB 이하여야 합니다.');return;}
+    try{setCsvRows(parseTransactionCsv(await file.text()));}
+    catch(reason){setError(reason instanceof Error?reason.message:'CSV 오류');}
+  }
+  async function commitCsv(){
+    if(busy||!csvRows.length)return;
+    if(!window.confirm('CSV '+csvRows.length+'건을 기존 회비 거래 내역에 추가합니다. 중복 데이터도 추가될 수 있습니다. 진행할까요?'))return;
+    setBusy(true);setError('');setMessage('');
+    let added=0;
+    try {
+      for(let i=0;i<csvRows.length;i+=20){
+        const result=await importExpenses(csvRows.slice(i,i+20));
+        added+=result.added;
+      }
+      setCsvRows([]);
+      const refreshed=await readExpensesForManagement();
+      setRecords(refreshed.records);
+      setMessage('CSV '+added+'건을 추가했습니다.');
+    }catch(reason){
+      setError('CSV 등록 중 '+added+'건 완료 후 중단되었습니다. 중복 등록하지 않도록 목록을 확인하세요. '+(reason instanceof Error?reason.message:''));
+      await readExpensesForManagement().then(data=>setRecords(data.records)).catch(()=>{});
+    }finally{setBusy(false);}
+  }
+  function downloadTemplate(){
+    const url=URL.createObjectURL(new Blob([transactionCsvExample()],{type:'text/csv;charset=utf-8'}));
+    const link=document.createElement('a');link.href=url;link.download='myrock-expense-transactions-template.csv';
+    document.body.appendChild(link);link.click();link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
   return <>
     <div className="page-heading container"><span className="eyebrow">FINANCE ADMINISTRATION</span><h1>회비 집행 내역 관리</h1>
       <p>동아리 계좌의 입금과 출금을 포함한 모든 거래를 기록합니다.</p></div>
@@ -56,11 +93,23 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
       {error&&<p role="alert" className="form-error">{error}</p>}
       {message&&<p role="status" className="finance-manager-success">{message}</p>}
       <section className="finance-manager-section">
-        <div className="finance-manager-heading"><div><h2>거래 기록 관리</h2><p>거래일시·거래구분·거래금액·거래 후 잔액·거래내용을 관리합니다. CSV 파일 업로드는 지원하지 않습니다.</p></div>
+        <div className="finance-manager-heading"><div><h2>거래 기록 관리</h2><p>거래일시·거래구분·거래금액·거래 후 잔액·거래내용을 관리합니다.</p></div>
           <div className="finance-manager-actions">
             <button type="button" className="outline-action" disabled={busy||Boolean(add)||Boolean(editing)} onClick={()=>setAdd({record:{...EMPTY_TRANSACTION}})}><Plus size={15}/> 거래 추가</button>
             <button type="button" className="outline-action" disabled={busy||loading} onClick={download}><Download size={15}/> 전체 거래 CSV 다운로드</button>
           </div>
+        </div>
+        <div className="finance-manager-import">
+          <label className="outline-action finance-manager-upload"><Upload size={15}/> CSV 파일 선택
+            <input type="file" accept=".csv,text/csv" aria-label="회비 집행 내역 CSV 파일 선택" onChange={event=>void chooseCsv(event)}/>
+          </label>
+          <button type="button" className="outline-action finance-manager-template" onClick={downloadTemplate}><Download size={15}/> 양식 내려받기</button>
+          <div className="finance-manager-csv-guidance"><span>날짜는 반드시 다음 예시와 같은 값을 사용해야 합니다. 예시) 2026-10-14 15:30</span></div>
+          {csvRows.length>0&&<div className="finance-manager-import-confirm">
+            <strong>추가 준비: {csvRows.length}건{csvRange&&` (${csvRange.start} ~ ${csvRange.end})`}</strong>
+            <button type="button" className="button button-primary" disabled={busy} onClick={()=>void commitCsv()}>CSV {csvRows.length}건 추가</button>
+            <button type="button" className="outline-action" disabled={busy} onClick={()=>setCsvRows([])}>취소</button>
+          </div>}
         </div>
         <div className="finance-manager-table-wrap">
           <table className="finance-manager-table finance-transactions-admin">

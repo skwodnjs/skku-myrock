@@ -79,6 +79,17 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     }catch(reason){setError('CSV 등록 중 '+added+'건 완료 후 중단되었습니다. 중복 등록하지 않도록 목록을 확인하세요. '+(reason instanceof Error?reason.message:''));await refresh().catch(()=>{});}
     finally{setBusy(false);}
   }
+  function downloadTemplate() {
+    const example=serializeDonationCsv([{
+      date:'2026-10-14',donorName:'홍길동',studentId:'2026300001',amount:'10000',anonymous:'x'
+    }]);
+    downloadTextCsv('myrock-donations-template.csv',example);
+  }
+  function downloadTextCsv(filename:string,contents:string) {
+    const url=URL.createObjectURL(new Blob([contents],{type:'text/csv;charset=utf-8'}));
+    const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   function downloadCsv() {
     if(!data)return;
     const contents=serializeDonationCsv(data.records);
@@ -120,7 +131,8 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
             <label className="outline-action finance-manager-upload"><Upload size={15}/> CSV 파일 선택
               <input type="file" accept=".csv,text/csv" onChange={event=>void chooseCsv(event)} aria-label="후원 내역 CSV 파일 선택"/>
             </label>
-            <span>후원일, 후원자명, 학번, 후원금액, 익명여부 · o만 익명 처리합니다.</span>
+            <button type="button" className="outline-action finance-manager-template" onClick={downloadTemplate}><Download size={15}/> 양식 내려받기</button>
+            <div className="finance-manager-csv-guidance"><span>날짜는 반드시 다음 예시와 같은 값을 사용해야 합니다. 예시) 2026-10-14</span><span>익명 여부 표시에는 'o'를 정확하게 사용해주세요.</span></div>
             {csvRows.length>0&&<div className="finance-manager-import-confirm">
               <strong>추가 준비: {csvRows.length}건{csvRange&&` (${csvRange.start} ~ ${csvRange.end})`}</strong><button type="button" className="button button-primary" disabled={busy} onClick={()=>void commitCsv()}>CSV {csvRows.length}건 추가</button>
               <button type="button" className="outline-action" disabled={busy} onClick={()=>setCsvRows([])}>취소</button>

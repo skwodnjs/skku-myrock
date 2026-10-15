@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
+import { ArrowRight, Check, Download, FileSpreadsheet, KeyRound, Plus, RefreshCw, Search, Trash2, Upload, Users } from 'lucide-react';
 import type { MemberRole, Session } from './firebase';
 import {
   callError, deleteMember, downloadExampleCsv, formatMemberValues, loadMembers,
@@ -208,7 +208,6 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
   const progressPercent = preview.length > 0 ? Math.min(100, Math.round((progressDone / preview.length) * 100)) : 0;
 
   return <section className="container section-block">
-    <div className="admin-notice"><ShieldCheck size={19}/><span>부원 명단 조회와 변경 권한은 Cloudflare 서버에서 매 요청마다 검사합니다. 파트장은 세션, 실무단은 기본 정보, 회장단은 등록·권한·삭제까지 관리할 수 있습니다.</span></div>
     <div className="member-layout">
       <nav className="member-tabs" aria-label="부원 관리 기능">
         <button type="button" className={tab === 'list' ? 'active' : ''} onClick={() => {setEditing(null);setTab('list');}}>부원 명단</button>

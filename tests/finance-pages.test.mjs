@@ -155,7 +155,7 @@ test('donation edits use only inline row fields and remove the private disclosur
   assert.match(manager,/onClick=\{\(\)=>setEditing\(null\)\}>취소/);
   assert.match(manager,/editing&&!editing.id&&<form/);
 });
-test('transaction manager accepts manual row additions and edits, CSV export only',async()=>{
+test('transaction manager supports CSV upload, individual edits, templates and export',async()=>{
   const manager=await readFile(new URL('../src/ExpenseManagement.tsx',import.meta.url),'utf8');
   const client=await readFile(new URL('../src/financeTransactions.ts',import.meta.url),'utf8');
   assert.match(app,/return 'expense-manage'/);
@@ -166,7 +166,10 @@ test('transaction manager accepts manual row additions and edits, CSV export onl
   }
   assert.match(manager,/finance-inline-edit/);
   assert.match(client,/TRANSACTION_COLUMNS=\['거래일시','거래구분','거래금액','거래 후 잔액','거래내용'\]/);
-  assert.doesNotMatch(manager,/type="file"|onChange=\{.*chooseCsv/);
+  assert.match(manager,/type="file"/);
+  assert.match(manager,/onChange=\{event=>void chooseCsv\(event\)\}/);
+  assert.match(manager,/onClick=\{\(\)=>void commitCsv\(\)\}/);
+  assert.match(manager,/양식 내려받기/);
   assert.match(client,/downloadTransactions/);
   assert.match(styles,/\.finance-transaction-scroll>/);
 });
@@ -199,4 +202,36 @@ test('donation inline edit keeps fixed columns and equally aligned save/cancel a
   assert.match(styles,/\.finance-donations-admin\{table-layout:fixed;min-width:900px\}/);
   assert.match(styles,/\.finance-donations-admin \.finance-inline-row-actions\{display:flex;align-items:center;gap:6px/);
   assert.match(styles,/\.finance-donations-admin \.finance-inline-row-actions \.outline-action\{[\s\S]*?flex:1;[\s\S]*?height:36px/);
+});
+
+
+test('both CSV managers provide matching sample formats and date guidance',async()=>{
+  const donations=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  const expenses=await readFile(new URL('../src/ExpenseManagement.tsx',import.meta.url),'utf8');
+  for(const manager of [donations,expenses]){
+    assert.match(manager,/CSV 파일 선택/);
+    assert.match(manager,/양식 내려받기/);
+    assert.match(manager,/날짜는 반드시 다음 예시와 같은 값을 사용해야 합니다/);
+    assert.match(manager,/추가 준비: \{csvRows.length\}건/);
+    assert.match(manager,/CSV \{csvRows.length\}건 추가/);
+    assert.match(manager,/window.confirm\('CSV '/);
+  }
+  assert.match(donations,/예시\) 2026-10-14/);
+  assert.match(donations,/익명 여부 표시에는 'o'를 정확하게 사용해주세요/);
+  assert.doesNotMatch(donations,/후원일, 후원자명, 학번, 후원금액, 익명여부 · o만 익명 처리합니다/);
+  assert.match(donations,/myrock-donations-template.csv/);
+  assert.match(expenses,/예시\) 2026-10-14 15:30/);
+  assert.doesNotMatch(expenses,/익명 여부 표시에는/);
+  assert.match(expenses,/myrock-expense-transactions-template.csv/);
+  assert.match(expenses,/for\(let i=0;i<csvRows.length;i\+=20\)/);
+  assert.match(styles,/\.finance-manager-csv-guidance\{display:flex;flex-direction:column/);
+});
+test('member-management copy removed, action column is right aligned with a 3+2 control grid',async()=>{
+  const members=await readFile(new URL('../src/MemberManager.tsx',import.meta.url),'utf8');
+  assert.doesNotMatch(members,/부원 명단 조회와 변경 권한은 Cloudflare 서버에서 매 요청마다 검사합니다/);
+  assert.match(members,/className="member-live-head"><span>부원<\/span><span>기수 · 세션<\/span><span>직책 · 권한<\/span><span>관리<\/span>/);
+  assert.match(styles,/\.member-live-head>span:last-child\{text-align:right;justify-self:end/);
+  assert.match(styles,/\.member-live-row>\.member-actions\{[\s\S]*?display:grid!important;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(styles,/\.member-live-row>\.member-actions>button:nth-child\(4\)\{grid-column:1\/span 2\}/);
+  assert.match(styles,/\.member-live-row>\.member-actions>button:nth-child\(5\)\{grid-column:3\}/);
 });

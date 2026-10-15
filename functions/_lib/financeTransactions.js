@@ -82,3 +82,20 @@ export async function putTransaction(env,input,id,expectedUpdateTime){
   if(!result.ok)throw Error('거래 내역 저장에 실패했습니다.');
   return {id:key,...row,updateTime:result.data.updateTime??''};
 }
+
+
+/* The Firestore commit writes are atomic within each batch. */
+export async function appendTransactionBatch(env,rows){
+  if(!Array.isArray(rows)||rows.length<1||rows.length>20)
+    reject('회비 거래 CSV는 한 번에 최대 20건씩 등록할 수 있습니다.');
+  const writes=rows.map(input=>{
+    const record=normalizeTransaction(input);
+    return {update:{
+      name:EXPENSES.replace('https://firestore.googleapis.com/v1/','')+'/'+crypto.randomUUID(),
+      fields:toFields(record),
+    },currentDocument:{exists:false}};
+  });
+  const result=await googleRequest(env,FIRESTORE_ROOT+':commit',{method:'POST',body:{writes}});
+  if(!result.ok)throw Error('회비 거래 CSV 저장에 실패했습니다: '+result.status);
+  return rows.length;
+}
