@@ -188,6 +188,16 @@ test('private profile checks, role matrix, database writes and superadmin financ
     assert.equal(publicExpenses.status,200);
     assert.equal((await publicExpenses.json()).records.length,1);
     assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'upload',rows:[]}),env})).status,400);
+    assert.equal((await expensesManagePost({request:financeRequest('member','expenses-manage',{action:'import',rows:[transaction]}),env})).status,403);
+    assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:[]}),env})).status,400);
+    assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:Array.from({length:21},()=>transaction)}),env})).status,400);
+    const importedExpenses=await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:[
+      {...transaction,dateTime:'2026-10-14T08:10',type:'입금',amount:'5000',balance:'55000'},
+      {...transaction,dateTime:'2026-10-14T15:30',type:'출금',amount:'3000',balance:'52000'},
+    ]}),env});
+    assert.equal(importedExpenses.status,200);
+    assert.equal((await importedExpenses.json()).added,2);
+    assert.equal((await (await expensesGet({request:financeRequest(null,'expenses'),env})).json()).records.length,3);
     assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'save',
       id:savedExpense.id,expectedUpdateTime:'2026-10-15T00:00:01Z',record:transaction}),env})).status,409);
     const editedExpense=await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'save',
