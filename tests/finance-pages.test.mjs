@@ -170,3 +170,33 @@ test('transaction manager accepts manual row additions and edits, CSV export onl
   assert.match(client,/downloadTransactions/);
   assert.match(styles,/\.finance-transaction-scroll>/);
 });
+
+
+test('anonymous roster save reports both validation errors and success beside its save button', async () => {
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  assert.match(manager,/const \[peopleError,setPeopleError\]=useState\(''\)/);
+  assert.match(manager,/const \[peopleMessage,setPeopleMessage\]=useState\(''\)/);
+  assert.match(manager,/function markPeopleChanged\(\) \{[\s\S]*?setPeopleError\(''\);[\s\S]*?setPeopleMessage\(''\);/);
+  const persist=manager.slice(manager.indexOf('  async function persistPeople()'),manager.indexOf('  return <>',manager.indexOf('  async function persistPeople()')));
+  assert.match(persist,/setPeopleError\(''\);setPeopleMessage\(''\)/);
+  assert.match(persist,/setPeopleMessage\('익명자 명단이 저장되었습니다.'\)/);
+  assert.match(persist,/setPeopleError\(reason instanceof Error/);
+  assert.doesNotMatch(persist,/setError\(|setMessage\(/);
+  const footer=manager.slice(manager.indexOf('<div className="finance-manager-people-save">'));
+  assert.match(footer,/익명자 명단 저장<\/button>[\s\S]*?finance-manager-people-feedback/);
+  assert.match(footer,/role="alert" className="finance-manager-people-error"/);
+  assert.match(footer,/role="status" className="finance-manager-people-success"/);
+  assert.match(styles,/\.finance-manager-people-save\{display:flex;align-items:center;flex-wrap:wrap;gap:12px/);
+  assert.match(styles,/@media\(max-width:700px\)\{[\s\S]*?\.finance-manager-people-feedback\{flex-basis:100%\}/);
+});
+test('donation inline edit keeps fixed columns and equally aligned save/cancel actions',async()=>{
+  const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
+  assert.match(manager,/<table className="finance-manager-table finance-donations-admin">/);
+  assert.match(manager,/editing\?\.id===record.id\?/);
+  assert.match(manager,/finance-row-actions"><div className="finance-inline-row-actions">/);
+  assert.match(manager,/onClick=\{\(\)=>void persist\(\)\}[^>]*><Save size=\{13\}\/> 저장<\/button>/);
+  assert.match(manager,/onClick=\{\(\)=>setEditing\(null\)\}>취소<\/button>/);
+  assert.match(styles,/\.finance-donations-admin\{table-layout:fixed;min-width:900px\}/);
+  assert.match(styles,/\.finance-donations-admin \.finance-inline-row-actions\{display:flex;align-items:center;gap:6px/);
+  assert.match(styles,/\.finance-donations-admin \.finance-inline-row-actions \.outline-action\{[\s\S]*?flex:1;[\s\S]*?height:36px/);
+});
