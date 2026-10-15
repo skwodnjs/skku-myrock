@@ -1708,3 +1708,29 @@
   .member-live-row>.member-actions{grid-column:1/-1;grid-row:3;justify-content:stretch;gap:7px}
   .member-live-row>.member-actions .outline-action{font-size:10px;padding-inline:4px}
 }
+
+
+/* A saved anonymous donor stays on screen, struck through, until the save succeeds. */
+.finance-manager-anonymous-row.is-pending-removal{
+  background:#f7f8f7;border-left:3px solid #bdc8bf;padding-inline:10px 6px
+}
+.finance-manager-anonymous-row.is-pending-removal .finance-manager-anonymous-value strong,
+.finance-manager-anonymous-row.is-pending-removal input{
+  text-decoration:line-through;text-decoration-thickness:1px;
+  color:#93a199;opacity:.7
+}
+.finance-manager-anonymous-row.is-pending-removal .outline-action{
+  color:#486e58;border-color:#bdd3c2
+}
+/* Disabled because there is no pending change must visibly differ from the enabled save button. */
+.finance-manager-people-save>.button:disabled{
+  background:#e4e9e5!important;border-color:#dbe1dc!important;
+  color:#929d95!important;opacity:.65;box-shadow:none;filter:saturate(.25)
+}
+.finance-manager-people-save>.button:not(:disabled){opacity:1;filter:none}
+/* The forbidden cursor is misleading for buttons disabled while an async task runs.
+   Keep disabled functionality intact; show an OS busy spinner everywhere during requests. */
+button:disabled{cursor:default!important}
+body:has([data-async-busy="true"]),body:has([data-async-busy="true"]) *{
+  cursor:wait!important
+}

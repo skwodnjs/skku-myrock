@@ -5,6 +5,7 @@ import { getDonationManagement, importDonations, saveDonation, saveAnonymousPeop
 import type { ManageData } from './donationApi';
 import { displayAmount, displayDate, donationDateRange, EMPTY_DONATION, parseDonationCsv, serializeDonationCsv, validateDonation } from './donationData';
 import type { AnonymousPerson, DonationInput, DonationRecord } from './donationData';
+import { activeAnonymousPeople,hasAnonymousRosterChanges } from './anonymousRosterDraft';
 
 type Editing = { id?: string; updateTime?: string; row: DonationInput };
 const blankPerson: AnonymousPerson = {donorName:'',studentId:''};
@@ -18,11 +19,11 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   const [editing,setEditing]=useState<Editing|null>(null);
   const [csvRows,setCsvRows]=useState<DonationInput[]>([]);
   const [people,setPeople]=useState<AnonymousPerson[]>([]);
-  const [peopleChanged,setPeopleChanged]=useState(false);
+  const [pendingExclusions,setPendingExclusions]=useState<number[]>([]);
+  const peopleChanged=Boolean(data && hasAnonymousRosterChanges(people,data.people,pendingExclusions));
   const [peopleError,setPeopleError]=useState('');
   const [peopleMessage,setPeopleMessage]=useState('');
   function markPeopleChanged() {
-    setPeopleChanged(true);
     setPeopleError('');
     setPeopleMessage('');
   }
@@ -33,7 +34,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
   }
   async function refresh() {
     const result=await getDonationManagement();
-    setData(result);setPeople(result.people);setPeopleChanged(false);
+    setData(result);setPeople(result.people);setPendingExclusions([]);
   }
   useEffect(()=>{
     let active=true;
@@ -102,10 +103,10 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     setPeopleError('');setPeopleMessage('');
     setBusy(true);
     try{
-      if(people.some(person=>!person.donorName.trim()||!/^\d{10}$/.test(person.studentId.trim()))) {
+      const cleaned=activeAnonymousPeople(people,pendingExclusions);
+      if(cleaned.some(person=>!person.donorName.trim()||!/^\d{10}$/.test(person.studentId.trim()))) {
         throw new Error('익명자 명단은 이름과 숫자 10자리 학번을 모두 입력해야 저장할 수 있습니다.');
       }
-      const cleaned=people.map(person=>({donorName:person.donorName.trim(),studentId:person.studentId.trim()}));
       await saveAnonymousPeople(cleaned,data.registryUpdateTime);
       await refresh();setPeopleMessage('익명자 명단이 저장되었습니다.');
     }catch(reason){setPeopleError(reason instanceof Error?reason.message:'익명자 명단 저장 오류');}
@@ -115,7 +116,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     <div className="page-heading container"><span className="eyebrow">DONATION ADMINISTRATION</span>
       <h1>후원 내역 관리</h1><p>후원 기록과 익명자 명단을 관리합니다. 실무단 이상만 접근할 수 있습니다.</p>
     </div>
-    <div className="container finance-details-content finance-manager">
+    <div className="container finance-details-content finance-manager" data-async-busy={busy ? "true" : undefined}>
       <button type="button" className="finance-return-link" onClick={onBack}><ArrowLeft size={16}/> 후원 내역으로 돌아가기</button>
       {error&&<p role="alert" className="form-error">{error}</p>}
       {message&&<p role="status" className="finance-manager-success">{message}</p>}
@@ -186,19 +187,22 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           </div>
           <div className="finance-manager-anonymous-list">
             {people.length===0&&<p>익명자 명단이 비어 있습니다.</p>}
-            {people.map((person,index)=><div key={index} className="finance-manager-anonymous-row">
+            {people.map((person,index)=><div key={index} className={pendingExclusions.includes(index)?'finance-manager-anonymous-row is-pending-removal':'finance-manager-anonymous-row'}>
               {isSavedPerson(person)?<>
                 <span className="finance-manager-anonymous-value"><small>이름</small><strong>{person.donorName}</strong></span>
                 <span className="finance-manager-anonymous-value"><small>학번</small><strong>{person.studentId}</strong></span>
               </>:<>
-                <label>이름<input required value={person.donorName} maxLength={80} placeholder="이름" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));markPeopleChanged();}}/></label>
-                <label>학번<input required pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));markPeopleChanged();}}/></label>
+                <label>이름<input required disabled={busy||pendingExclusions.includes(index)} value={person.donorName} maxLength={80} placeholder="이름" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,donorName:event.target.value}:p));markPeopleChanged();}}/></label>
+                <label>학번<input required disabled={busy||pendingExclusions.includes(index)} pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));markPeopleChanged();}}/></label>
               </>}
-              <button type="button" className="outline-action" disabled={busy} onClick={()=>{setPeople(previous=>previous.filter((_,i)=>i!==index));markPeopleChanged();}}>제외</button>
+              <button type="button" className="outline-action" disabled={busy} onClick={()=>{
+                setPendingExclusions(previous=>previous.includes(index)?previous.filter(i=>i!==index):[...previous,index]);
+                markPeopleChanged();
+              }}>{pendingExclusions.includes(index)?'제외 취소':'제외'}</button>
             </div>)}
           </div>
           <div className="finance-manager-people-save">
-            <button type="button" className="button button-primary" disabled={busy||!peopleChanged} onClick={()=>void persistPeople()}>익명자 명단 저장</button>
+            <button type="button" className="button button-primary" disabled={busy||!peopleChanged} aria-disabled={busy||!peopleChanged} onClick={()=>void persistPeople()}>익명자 명단 저장</button>
             <div className="finance-manager-people-feedback" aria-live="polite">
               {peopleError&&<p role="alert" className="finance-manager-people-error">{peopleError}</p>}
               {peopleMessage&&<p role="status" className="finance-manager-people-success">{peopleMessage}</p>}

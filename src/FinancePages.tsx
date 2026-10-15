@@ -70,7 +70,7 @@ export function FinanceLanding({ onDonations, onExpenses, canEditAccount }: { on
       <p>보내주신 마음이 의미 있게 쓰일 수 있도록 후원 내역과 회비 집행 내역을 투명하게 공유하는 공간도 마련하고자 합니다. 모여락이 앞으로도 즐겁게 음악을 만들 수 있도록 따뜻한 관심 부탁드립니다.</p>
     </section>
 
-    <section className="container section-block finance-donation-account">
+    <section className="container section-block finance-donation-account" data-async-busy={busy ? "true" : undefined}>
       <div className="finance-account-heading"><FinanceSectionTitle title="후원 계좌 안내" description="후원을 원하시는 분을 위한 계좌 안내입니다." />
         {canEditAccount&&!editing&&<button type="button" className="outline-action" disabled={busy} onClick={()=>void beginEdit()}>정보 수정</button>}
       </div>

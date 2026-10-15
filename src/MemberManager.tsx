@@ -207,7 +207,7 @@ export default function MemberManager({ currentUid, level }: { currentUid: strin
     .some(value => String(value).toLowerCase().includes(query.trim().toLowerCase())));
   const progressPercent = preview.length > 0 ? Math.min(100, Math.round((progressDone / preview.length) * 100)) : 0;
 
-  return <section className="container section-block">
+  return <section className="container section-block" data-async-busy={busy||checkingPreview ? "true" : undefined}>
     <div className="member-layout">
       <nav className="member-tabs" aria-label="부원 관리 기능">
         <button type="button" className={tab === 'list' ? 'active' : ''} onClick={() => {setEditing(null);setTab('list');}}>부원 명단</button>
