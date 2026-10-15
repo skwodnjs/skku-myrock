@@ -18,12 +18,14 @@ import PasswordChange from './PasswordChange';
 import PhotoGallery from './PhotoGallery';
 import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
+import DonationManagement from './DonationManagement';
+import { purgeDonations } from './donationApi';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
 import NoticeImageCarousel from './NoticeImageCarousel';
 import NoticeComposer from './NoticeComposer';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -47,7 +49,7 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match && match[1] !== 'write' ? match[1] : null;
@@ -60,6 +62,7 @@ const pathToPage = (): Page => {
   if (/^\/news\/write\/?$/.test(window.location.pathname)) return 'notice-compose';
   if (noticeIdFromPath()) return 'notice-detail';
   if (scheduleIdFromPath()) return 'schedule-detail';
+  if (/^\/finance\/donations\/manage\/?$/.test(window.location.pathname)) return 'donation-manage';
   if (/^\/finance\/donations\/?$/.test(window.location.pathname)) return 'donations';
   if (/^\/finance\/expenses\/?$/.test(window.location.pathname)) return 'expenses';
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
@@ -360,6 +363,8 @@ function App() {
   const [hasSystemClaim,setHasSystemClaim] = useState(false);
   const [rosterResetting,setRosterResetting] = useState(false);
   const [rosterResetDeleted,setRosterResetDeleted] = useState(0);
+  const [financeResetting,setFinanceResetting] = useState(false);
+  const [financeRevision,setFinanceRevision] = useState(0);
   const [rosterRevision,setRosterRevision] = useState(0);
   useEffect(()=>{
     let live = true;
@@ -433,9 +438,32 @@ function App() {
       setRosterResetting(false);
     }
   }
+  async function resetDonationFinance() {
+    if(financeResetting||!user||!profile?.superadmin||!hasSystemClaim)return;
+    const typed=window.prompt('모든 후원 기록과 익명자 명단이 영구 삭제됩니다. 계속하려면 후원회계 초기화를 입력하세요.');
+    if(typed!=='후원회계 초기화')return;
+    if(!window.confirm('후원회계 전체 데이터를 영구 삭제합니다. 복구할 수 없습니다. 실행할까요?'))return;
+    setFinanceResetting(true);setAccountOpen(false);setMenuOpen(false);
+    let removed=0;
+    try {
+      let complete=false;
+      for(let i=0;i<500&&!complete;i++){
+        const response=await purgeDonations();
+        removed+=response.deleted;complete=response.done;
+      }
+      if(!complete)throw Error('초기화 허용 처리 횟수를 초과했습니다.');
+      setFinanceRevision(prev=>prev+1);
+      navigate('donations');
+      window.alert('후원회계 초기화가 완료되었습니다. 삭제된 기록: '+removed+'건');
+    }catch(error) {
+      window.alert('후원회계 초기화가 중단되었습니다. '+(error instanceof Error?error.message:'서버 오류')+'\n관리 화면에서 남은 데이터를 확인해 주세요.');
+      setFinanceRevision(prev=>prev+1);
+    }finally{setFinanceResetting(false);}
+  }
   const isDeveloperSuperadmin=Boolean(user && profile?.superadmin && hasSystemClaim);
   const currentLevel=managementLevel(profile,hasSystemClaim);
   const canManage=currentLevel!==null;
+  const canManageDonations=currentLevel==='staff'||currentLevel==='president';
   const canHandover=canViewHandover(profile,hasSystemClaim);
   return <div className="site-root">
     <header className="site-header"><div className="container header-inner">
@@ -449,10 +477,10 @@ function App() {
           onBlur={event => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setAccountOpen(false); }}
         ><button className="login-button account-toggle" type="button"
           onClick={() => { if (!window.matchMedia('(hover: hover)').matches) setAccountOpen(previous => !previous); }}
-          aria-haspopup="menu" aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃</button>{isDeveloperSuperadmin && <button type="button" className="developer-reset-action" disabled={rosterResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화</button>}</div>}</div>}
+          aria-haspopup="menu" aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃</button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화</button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원회계 초기화</button></>}</div>}</div>}
         <button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
       </div>
-    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <button type="button" className="developer-reset-action" disabled={rosterResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button>}</>}</div></nav>}
+    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원회계 초기화<Trash2 size={15}/></button></>}</>}</div></nav>}
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} openNotice={openNotice}/>}
@@ -471,7 +499,8 @@ function App() {
       {page==='gallery'&&<Gallery notify={notify}/>}
       {page==='equipment'&&<Equipment notify={notify}/>}
       {page==='finance'&&<FinanceLanding onDonations={() => navigate('donations')} onExpenses={() => navigate('expenses')}/>}
-      {page==='donations'&&<DonationHistory onBack={() => navigate('finance')} loggedIn={Boolean(user)} authPending={authPending} onLogin={showLogin}/>}
+      {page==='donations'&&<DonationHistory key={financeRevision} onBack={() => navigate('finance')} loggedIn={Boolean(user)} authPending={authPending} onLogin={showLogin} canManageDonations={Boolean(!authPending&&user&&canManageDonations)} onManage={()=>navigate('donation-manage')}/>}
+      {page==='donation-manage'&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태 확인 중입니다."/></section>:user&&canManageDonations?<DonationManagement onBack={()=>navigate('donations')}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="후원 내역 관리는 실무단 이상만 가능합니다."/></section>)}
       {page==='expenses'&&<ExpenseHistory onBack={() => navigate('finance')}/>}
       {page==='profile'&&<Profile user={user} profile={profile} pending={authPending} error={profileError} notify={notify} onSaved={next=>setProfile(previous=>previous?{...previous,sessions:next}:null)}/>}
       {(page==='handover'||page==='members')&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section>:page==='members'&&canManage&&user?<><PageHeading tag="MEMBER MANAGEMENT" title="부원 관리" description="부원 명단 조회와 운영 권한에 따른 부원 정보 수정"/><MemberManager key={rosterRevision} currentUid={user.uid} level={currentLevel!}/></>:page==='handover'&&canHandover?<Handover openLogin={showLogin} notify={notify}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="해당 메뉴에 접근할 수 있는 운영진 권한이 필요합니다." /></section>)}
