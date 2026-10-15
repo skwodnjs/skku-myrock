@@ -273,7 +273,6 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                 aria-expanded={slidePickerId===block.id} onClick={()=>toggleImagePicker(block.id)}>
                 <ImagePlus size={15}/> 슬라이드에 사진 추가
               </button>
-              {slidePickerId===block.id&&imagePicker(block.id)}
               <p className="notice-composer-gallery-note">사진을 드래그하거나 이동 버튼으로 순서를 바꿀 수 있습니다. 각 이미지의 크기는 따로 설정하며, 슬라이드 영역은 가장 넓고 가장 높은 이미지에 맞춰집니다.</p>
               <div className="notice-composer-gallery-sizes">
                 {block.images.map((image, imageIndex) => <div key={image.id}
@@ -326,6 +325,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                   </div>
                 </div>)}
               </div>
+              {slidePickerId===block.id&&imagePicker(block.id)}
             </div> :
             <div className="notice-composer-image">
               <div className="notice-composer-image-stage" style={{
