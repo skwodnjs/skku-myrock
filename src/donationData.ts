@@ -31,7 +31,7 @@ export function validateDonation(row: DonationInput): DonationInput {
     new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('후원일을 YYYY-MM-DD로 입력해 주세요.');
   if(donorName.length>80||(studentId!==''&&!/^\d{10}$/.test(studentId)))throw Error('후원자명은 80자 이하, 학번은 빈칸 또는 숫자 10자리여야 합니다.');
   if(!/^\d{1,12}$/.test(amount)||BigInt(amount)<1n||BigInt(amount)>1000000000000n)throw Error('후원금액은 양의 정수여야 합니다.');
-  return {date,donorName,studentId,amount:String(BigInt(amount)),anonymous:row.anonymous.trim().toLowerCase()==='o'?'o':'x'};
+  return {date,donorName,studentId,amount:String(BigInt(amount)),anonymous:row.anonymous.trim()==='o'?'o':'x'};
 }
 export function parseDonationCsv(text: string): DonationInput[] {
   const rows=readCsv(text);
