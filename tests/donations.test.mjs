@@ -77,7 +77,7 @@ test('private profile checks, role matrix, database writes and superadmin financ
   put('/financeSettings/anonymousDonors',{people:[{donorName:'홍길동',studentId:'2026300001'}]});
   const previousFetch=globalThis.fetch;
   globalThis.fetch=async(raw,options={})=>{
-    const uri=new URL(String(raw)),data=options.body?JSON.parse(options.body):null;
+    const uri=new URL(String(raw)),data=typeof options.body==='string'&&options.body.startsWith('{')?JSON.parse(options.body):null;
     const response=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
     if(uri.pathname.includes('/service_accounts/v1/jwk/'))return response({keys:[jwk]});
     if(uri.hostname==='oauth2.googleapis.com')return response({access_token:'test-access',expires_in:3600});
