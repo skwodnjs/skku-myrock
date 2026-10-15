@@ -20,6 +20,7 @@ import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
+import NoticeImageCarousel from './NoticeImageCarousel';
 import NoticeComposer from './NoticeComposer';
 
 type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
@@ -227,13 +228,9 @@ function NoticeDetail({ notice, canViewAuthor, backToList }: { notice: NoticePos
       </header>
       <div className="notice-detail-content">
         <div className="notice-detail-images" aria-label="공지사항 이미지">
-          {notice.images.map((src, index) => src ?
-            <img key={index} src={src} alt={notice.title + ' 첨부 이미지 ' + (index + 1)} loading="lazy"/> :
-            <div key={index} className="notice-detail-photo-placeholder" role="img"
-              aria-label={notice.title + ' 첨부 이미지 ' + (index + 1) + ' 준비 중'}>
-              <span aria-hidden="true">▧</span>
-              <small>공지 이미지 {index + 1} 자리</small>
-            </div>)}
+          <NoticeImageCarousel key={notice.id} label={notice.title + ' 첨부 이미지'} slides={notice.images.map((src, index) => ({
+            id: index, src, alt: '공지 이미지 ' + (index + 1), width: 800, height: 450,
+          }))}/>
         </div>
         <div className="notice-detail-body">
           {notice.body.split(/\n\s*\n/).map((paragraph, index) =>
