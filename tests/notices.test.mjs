@@ -214,3 +214,55 @@ test('multi-selection is grouped into one carousel, preserves per-image resizing
   assert.match(composer, /<button type="button" className="button button-primary" disabled title="발행 기능은 추후 연결됩니다.">발행 \(준비 중\)<\/button>/);
   assert.doesNotMatch(composer, /onClick=\{.*publish|uploadBytes|uploadString|setDoc\(|addDoc\(/);
 });
+
+
+test('append photos to an existing single image or slideshow, preserving per-image dimensions and order', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /function addImages\(event: ChangeEvent<HTMLInputElement>, targetBlockId\?: number\)/);
+  assert.match(composer, /if \(block.kind === 'image'\) return \{ id: block.id, kind: 'gallery', images: \[block, \.\.\.newImages\] \}/);
+  assert.match(composer, /if \(block.kind === 'gallery'\) return \{ \.\.\.block, images: \[\.\.\.block.images, \.\.\.newImages\] \}/);
+  assert.match(composer, /selected.length \+ existingCount > 20/);
+  assert.match(composer, /onChange=\{event => addImages\(event, block.id\)\}/);
+  assert.match(composer, /슬라이드로 사진 추가/);
+  assert.match(composer, /슬라이드에 사진 추가/);
+  assert.match(composer, /naturalWidth: 0, naturalHeight: 0/);
+});
+
+test('gallery drag and accessible move buttons reorder underlying slides by stable image id', async () => {
+  const code = await readFile(new URL('../src/noticeGalleryOrder.ts', import.meta.url), 'utf8');
+  const js = typescript.transpileModule(code, { compilerOptions: {
+    module: typescript.ModuleKind.ESNext, target: typescript.ScriptTarget.ES2022,
+  } }).outputText;
+  const { reorderGalleryImages, shiftGalleryImage } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  const images = [{id: 10, name:'A'}, {id: 20, name:'B'}, {id: 30, name:'C'}];
+  assert.deepEqual(reorderGalleryImages(images, 10, 30).map(x=>x.id), [20,30,10]);
+  assert.deepEqual(reorderGalleryImages(images, 30, 10).map(x=>x.id), [30,10,20]);
+  assert.deepEqual(shiftGalleryImage(images,20,-1).map(x=>x.id), [20,10,30]);
+  assert.deepEqual(shiftGalleryImage(images,20,1).map(x=>x.id), [10,30,20]);
+  assert.deepEqual(shiftGalleryImage(images,10,-1),images);
+  assert.deepEqual(reorderGalleryImages(images,10,999),images);
+  assert.deepEqual(images.map(x=>x.id),[10,20,30]);
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /onDragStart=\{event => startSlideDrag\(event, block.id, image.id\)\}/);
+  assert.match(composer, /onDrop=\{event => dropSlide\(event, block.id, image.id\)\}/);
+  assert.match(composer, /moveGallerySlide\(block.id, image.id, -1\)/);
+  assert.match(composer, /moveGallerySlide\(block.id, image.id, 1\)/);
+  const carousel = await readFile(new URL('../src/NoticeImageCarousel.tsx', import.meta.url), 'utf8');
+  assert.match(carousel, /slides.findIndex\(slide => slide.id === activeId\)/);
+  assert.match(carousel, /setActiveId\(slide.id\)/);
+});
+
+test('restore original image pixel dimensions per image and enable aspect lock for single or gallery images', async () => {
+  const source = await readFile(new URL('../src/noticeImageSize.ts', import.meta.url), 'utf8');
+  const js = typescript.transpileModule(source, { compilerOptions: { module: typescript.ModuleKind.ESNext,
+    target: typescript.ScriptTarget.ES2022 } }).outputText;
+  const { restoreOriginalDimensions } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+  assert.deepEqual(restoreOriginalDimensions({width:300,height:200,naturalWidth:2400,naturalHeight:1600}),{width:2400,height:1600});
+  assert.deepEqual(restoreOriginalDimensions({width:400,height:160,naturalWidth:0,naturalHeight:0}),{width:400,height:160});
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /function restoreImageSize\(id: number\)/);
+  assert.match(composer, /restoreOriginalDimensions\(image\), ratioLocked: true/);
+  assert.match(composer, /disabled=\{!image.naturalWidth \|\| !image.naturalHeight\}/);
+  assert.match(composer, /disabled=\{!block.naturalWidth \|\| !block.naturalHeight\}/);
+  assert.equal(composer.split('원본 크기 복원').length - 1, 2);
+});

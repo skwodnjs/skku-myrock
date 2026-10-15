@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { galleryFrame, slideDimensions } from './noticeCarouselSizing';
@@ -13,15 +13,15 @@ export type NoticeSlide = {
 };
 
 export default function NoticeImageCarousel({ slides, label }: { slides: readonly NoticeSlide[]; label: string }) {
-  const [current, setCurrent] = useState(0);
+  const [activeId, setActiveId] = useState<number | string | null>(null);
   const touchOrigin = useRef<{ x: number; y: number } | null>(null);
-  useEffect(() => { setCurrent(index => Math.min(index, Math.max(0, slides.length - 1))); }, [slides.length]);
   if (!slides.length) return null;
-  const activeIndex = Math.min(current, slides.length - 1);
+  const selectedIndex = slides.findIndex(slide => slide.id === activeId);
+  const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const active = slides[activeIndex];
   const frame = galleryFrame(slides);
   const size = slideDimensions(active);
-  const go = (delta: number) => setCurrent(index => (index + delta + slides.length) % slides.length);
+  const go = (delta: number) => setActiveId(slides[(activeIndex + delta + slides.length) % slides.length].id);
   const onTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
     if (touch) touchOrigin.current = { x: touch.clientX, y: touch.clientY };
@@ -61,7 +61,7 @@ export default function NoticeImageCarousel({ slides, label }: { slides: readonl
       <span aria-live="polite">{activeIndex + 1} / {slides.length}</span>
       <div className="notice-slide-dots" aria-label="이미지 선택">
         {slides.map((slide, index) => <button key={slide.id} type="button" aria-label={(index + 1) + '번째 이미지'} aria-current={index === activeIndex ? 'true' : undefined}
-          className={index === activeIndex ? 'active' : ''} onClick={() => setCurrent(index)}/>)}
+          className={index === activeIndex ? 'active' : ''} onClick={() => setActiveId(slide.id)}/>)}
       </div>
     </div>}
   </div>;

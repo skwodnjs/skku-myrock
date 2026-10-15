@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Link, Link2Off, Plus, Trash2 } from 'lucide-react';
+import type { ChangeEvent, DragEvent } from 'react';
+import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, ImagePlus, Link, Link2Off, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import type { NoticeCategory } from './noticesData';
-import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions } from './noticeImageSize';
+import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions, restoreOriginalDimensions } from './noticeImageSize';
+import { reorderGalleryImages, shiftGalleryImage } from './noticeGalleryOrder';
 import type { DimensionAxis } from './noticeImageSize';
 import NoticeImageCarousel from './NoticeImageCarousel';
 import type { NoticeSlide } from './NoticeImageCarousel';
 
-type ImageBlock = { id: number; kind: 'image'; url: string; name: string; width: number; height: number; ratioLocked: boolean };
+type ImageBlock = { id: number; kind: 'image'; url: string; name: string; width: number; height: number; ratioLocked: boolean; naturalWidth: number; naturalHeight: number };
 type DraftBlock = { id: number; kind: 'text'; text: string } | ImageBlock | { id: number; kind: 'gallery'; images: ImageBlock[] };
 const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
@@ -19,6 +20,8 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState('');
   const nextId = useRef(2);
   const objectUrls = useRef<string[]>([]);
+  const draggingSlide = useRef<{ groupId: number; imageId: number } | null>(null);
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
 
   useEffect(() => () => { objectUrls.current.forEach(url => URL.revokeObjectURL(url)); }, []);
 
@@ -26,29 +29,42 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     setBlocks(previous => [...previous, { id: nextId.current++, kind: 'text', text: '' }]);
     setPreview(false);
   }
-  function addImages(event: ChangeEvent<HTMLInputElement>) {
+  function addImages(event: ChangeEvent<HTMLInputElement>, targetBlockId?: number) {
     const selected = Array.from(event.target.files ?? []);
     if (!selected.length) return;
+    const target = targetBlockId === undefined ? null : blocks.find(block => block.id === targetBlockId);
+    if (targetBlockId !== undefined && (!target || target.kind === 'text')) {
+      setError('이미지를 추가할 슬라이드를 찾을 수 없습니다.');
+      event.target.value = '';
+      return;
+    }
     const invalid = selected.find(file => !allowedTypes.has(file.type) || file.size > 10 * 1024 * 1024);
     if (invalid) {
       setError('PNG, JPG, WebP, GIF 형식의 10MB 이하 이미지만 추가할 수 있습니다.');
       event.target.value = '';
       return;
     }
-    if (selected.length > 20) {
-      setError('이미지는 한 번에 최대 20장까지 선택할 수 있습니다.');
+    const existingCount = target?.kind === 'gallery' ? target.images.length : target?.kind === 'image' ? 1 : 0;
+    if (selected.length + existingCount > 20) {
+      setError('한 슬라이드에는 최대 20장까지 추가할 수 있습니다.');
       event.target.value = '';
       return;
     }
     const newImages: ImageBlock[] = selected.map(file => {
       const url = URL.createObjectURL(file);
       objectUrls.current.push(url);
-      return { id: nextId.current++, kind: 'image', url, name: file.name, width: 0, height: 0, ratioLocked: true };
+      return { id: nextId.current++, kind: 'image', url, name: file.name, width: 0, height: 0,
+        ratioLocked: true, naturalWidth: 0, naturalHeight: 0 };
     });
-    setBlocks(previous => [...previous, selected.length > 1
-      ? { id: nextId.current++, kind: 'gallery', images: newImages } : newImages[0]]);
-    // Load every slide's natural dimensions before the user opens it, so the
-    // shared stage immediately reflects the largest image in the group.
+    setBlocks(previous => targetBlockId === undefined
+      ? [...previous, selected.length > 1
+        ? { id: nextId.current++, kind: 'gallery', images: newImages } : newImages[0]]
+      : previous.map(block => {
+          if (block.id !== targetBlockId) return block;
+          if (block.kind === 'image') return { id: block.id, kind: 'gallery', images: [block, ...newImages] };
+          if (block.kind === 'gallery') return { ...block, images: [...block.images, ...newImages] };
+          return block;
+        }));
     for (const image of newImages) {
       const loader = new Image();
       loader.onload = () => setNaturalSize(image.id, loader.naturalWidth, loader.naturalHeight);
@@ -62,12 +78,13 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     setBlocks(previous => previous.map(block => block.id === id && block.kind === 'text' ? { ...block, text } : block));
   }
   function setNaturalSize(id: number, naturalWidth: number, naturalHeight: number) {
-    setBlocks(previous => previous.map(block => {
-      if (block.kind === 'gallery') return { ...block, images: block.images.map(image =>
-        image.id === id && image.width === 0 ? { ...image, ...initialImageDimensions(naturalWidth, naturalHeight) } : image) };
-      return block.kind === 'image' && block.id === id && block.width === 0
-        ? { ...block, ...initialImageDimensions(naturalWidth, naturalHeight) } : block;
-    }));
+    if (naturalWidth < 1 || naturalHeight < 1) return;
+    const update = (image: ImageBlock): ImageBlock => image.id !== id ||
+      (image.naturalWidth === naturalWidth && image.naturalHeight === naturalHeight)
+      ? image : { ...image, naturalWidth, naturalHeight,
+          ...(image.width === 0 ? initialImageDimensions(naturalWidth, naturalHeight) : {}) };
+    setBlocks(previous => previous.map(block => block.kind === 'gallery'
+      ? { ...block, images: block.images.map(update) } : block.kind === 'image' ? update(block) : block));
   }
   function changeImageSize(id: number, axis: DimensionAxis, value: number) {
     setBlocks(previous => previous.map(block => {
@@ -83,6 +100,30 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
         image.id === id ? { ...image, ratioLocked: !image.ratioLocked } : image) };
       return block.kind === 'image' && block.id === id ? { ...block, ratioLocked: !block.ratioLocked } : block;
     }));
+  }
+  function restoreImageSize(id: number) {
+    const restore = (image: ImageBlock): ImageBlock => image.id === id
+      ? { ...image, ...restoreOriginalDimensions(image), ratioLocked: true } : image;
+    setBlocks(previous => previous.map(block => block.kind === 'gallery'
+      ? { ...block, images: block.images.map(restore) } : block.kind === 'image' ? restore(block) : block));
+  }
+  function moveGallerySlide(groupId: number, imageId: number, offset: number) {
+    setBlocks(previous => previous.map(block => block.id === groupId && block.kind === 'gallery'
+      ? { ...block, images: shiftGalleryImage(block.images, imageId, offset) } : block));
+  }
+  function startSlideDrag(event: DragEvent<HTMLButtonElement>, groupId: number, imageId: number) {
+    draggingSlide.current = { groupId, imageId };
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(imageId));
+  }
+  function dropSlide(event: DragEvent<HTMLDivElement>, groupId: number, targetId: number) {
+    event.preventDefault();
+    const dragged = draggingSlide.current;
+    draggingSlide.current = null;
+    setDropTarget(null);
+    if (!dragged || dragged.groupId !== groupId) return;
+    setBlocks(previous => previous.map(block => block.id === groupId && block.kind === 'gallery'
+      ? { ...block, images: reorderGalleryImages(block.images, dragged.imageId, targetId) } : block));
   }
   function removeSlide(groupId: number, imageId: number) {
     setBlocks(previous => previous.flatMap(block => block.id === groupId && block.kind === 'gallery'
@@ -156,12 +197,32 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
               onChange={event => changeText(block.id, event.target.value)}/> :
             block.kind === 'gallery' ? <div className="notice-composer-gallery">
               <NoticeImageCarousel label="작성 중인 이미지 슬라이드" slides={gallerySlides(block.images)}/>
-              <p className="notice-composer-gallery-note">각 이미지의 크기를 별도로 변경할 수 있습니다. 슬라이드 영역은 가장 넓은 이미지와 가장 높은 이미지에 맞춰집니다.</p>
+              <label className="outline-action notice-composer-file notice-composer-gallery-add"><ImagePlus size={15}/> 슬라이드에 사진 추가
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={event => addImages(event, block.id)} aria-label="슬라이드에 추가할 이미지 선택"/>
+              </label>
+              <p className="notice-composer-gallery-note">사진을 드래그하거나 이동 버튼으로 순서를 바꿀 수 있습니다. 각 이미지의 크기는 따로 설정하며, 슬라이드 영역은 가장 넓고 가장 높은 이미지에 맞춰집니다.</p>
               <div className="notice-composer-gallery-sizes">
-                {block.images.map((image, imageIndex) => <div key={image.id} className="notice-composer-gallery-size-row">
+                {block.images.map((image, imageIndex) => <div key={image.id}
+                  className={`notice-composer-gallery-size-row${dropTarget === image.id ? ' is-drop-target' : ''}`}
+                  onDragOver={event => {
+                    if (draggingSlide.current?.groupId === block.id) { event.preventDefault(); setDropTarget(image.id); }
+                  }}
+                  onDrop={event => dropSlide(event, block.id, image.id)}>
                   <div className="notice-composer-gallery-size-heading">
+                    <button type="button" draggable className="notice-composer-gallery-drag-handle"
+                      title="드래그해서 이미지 순서 변경" aria-label={(imageIndex + 1) + '번째 이미지 순서 드래그'}
+                      onDragStart={event => startSlideDrag(event, block.id, image.id)}
+                      onDragEnd={() => { draggingSlide.current = null; setDropTarget(null); }}><GripVertical size={17}/></button>
+                    <img className="notice-composer-gallery-thumb" src={image.url} alt="" draggable={false}/>
                     <strong>{imageIndex + 1}번째 이미지 · {image.name}</strong>
-                    <button type="button" className="notice-composer-gallery-remove" onClick={() => removeSlide(block.id, image.id)} aria-label={(imageIndex + 1) + '번째 이미지 삭제'}><Trash2 size={14}/></button>
+                    <div className="notice-composer-gallery-order-actions">
+                      <button type="button" disabled={imageIndex === 0} aria-label={(imageIndex + 1) + '번째 이미지 앞으로 이동'}
+                        onClick={() => moveGallerySlide(block.id, image.id, -1)}><ArrowUp size={14}/></button>
+                      <button type="button" disabled={imageIndex === block.images.length - 1} aria-label={(imageIndex + 1) + '번째 이미지 뒤로 이동'}
+                        onClick={() => moveGallerySlide(block.id, image.id, 1)}><ArrowDown size={14}/></button>
+                      <button type="button" className="notice-composer-gallery-remove" onClick={() => removeSlide(block.id, image.id)}
+                        aria-label={(imageIndex + 1) + '번째 이미지 삭제'}><Trash2 size={14}/></button>
+                    </div>
                   </div>
                   <div className="notice-composer-dimensions" role="group" aria-label={(imageIndex + 1) + '번째 이미지 크기'}>
                     <label>W
@@ -181,6 +242,10 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                         disabled={!image.height} onChange={event => changeImageSize(image.id, 'height', Number(event.target.value))}/>
                       <span>px</span>
                     </label>
+                    <button type="button" className="notice-composer-original-size" onClick={() => restoreImageSize(image.id)}
+                      disabled={!image.naturalWidth || !image.naturalHeight} title="파일의 원본 픽셀 크기로 복원">
+                      <RotateCcw size={14}/> 원본 크기 복원
+                    </button>
                   </div>
                 </div>)}
               </div>
@@ -210,7 +275,14 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
                     disabled={!block.height} onChange={event => changeImageSize(block.id, 'height', Number(event.target.value))}/>
                   <span>px</span>
                 </label>
+                <button type="button" className="notice-composer-original-size" onClick={() => restoreImageSize(block.id)}
+                  disabled={!block.naturalWidth || !block.naturalHeight} title="파일의 원본 픽셀 크기로 복원">
+                  <RotateCcw size={14}/> 원본 크기 복원
+                </button>
               </div>
+              <label className="outline-action notice-composer-file notice-composer-gallery-add"><ImagePlus size={15}/> 슬라이드로 사진 추가
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={event => addImages(event, block.id)} aria-label="이 이미지와 묶을 사진 선택"/>
+              </label>
               <small>{block.name}</small>
             </div>}
         </div>)}
