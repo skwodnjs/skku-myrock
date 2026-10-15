@@ -32,7 +32,7 @@ test('CSV file parsing supports optional names and student IDs and safe re-expor
   const ts=await readFile(new URL('../src/donationData.ts',import.meta.url),'utf8');
   const typescript=await import('typescript');
   const js=typescript.default.transpileModule(ts,{compilerOptions:{module:typescript.default.ModuleKind.ESNext,target:typescript.default.ScriptTarget.ES2022}}).outputText;
-  const {parseDonationCsv,serializeDonationCsv,sumDonationAmounts,donationDateRange}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+  const {parseDonationCsv,serializeDonationCsv,sumDonationAmounts,donationDateRange,displayAmount}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
   const input='\uFEFF후원일,후원자명,학번,후원금액,익명여부\r\n2026-01-01,홍길동,2026300001,10000,o\r\n2026-02-02,,,5000,\r\n2026-02-03,"홍,길동",,7000,X\r\n';
   const rows=parseDonationCsv(input);
   assert.equal(rows.length,3);
@@ -43,6 +43,7 @@ test('CSV file parsing supports optional names and student IDs and safe re-expor
   assert.equal(sumDonationAmounts([{amount:'1234'},{amount:'8766'}]),'10000');
   assert.equal(sumDonationAmounts([{amount:'9007199254740993'},{amount:'7'}]),'9007199254741000');
   assert.equal(sumDonationAmounts([]),'0');
+  assert.equal(displayAmount(sumDonationAmounts([{amount:'9007199254740993'},{amount:'7'}])),'9,007,199,254,741,000원');
   assert.deepEqual(donationDateRange([rows[2],rows[0],rows[1]]),{start:'2026-01-01',end:'2026-02-03'});
   assert.equal(donationDateRange([]),null);
   assert.throws(()=>parseDonationCsv('후원일,이름\n2026-01-01,홍길동'),/헤더/);
