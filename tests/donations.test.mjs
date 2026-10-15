@@ -54,6 +54,31 @@ test('CSV file parsing supports optional names and student IDs and safe re-expor
   assert.throws(()=>parseDonationCsv('후원일,이름\n2026-01-01,홍길동'),/헤더/);
   assert.throws(()=>parseDonationCsv('후원일,후원자명,학번,후원금액,익명여부\n2026-01-01,홍길동,2,1000,x'),/학번/);
 });
+test('expense CSV template, preview and upload parser support quoted content and reject malformed data',async()=>{
+  const ts=await import('typescript');
+  const options={compilerOptions:{module:ts.default.ModuleKind.ESNext,target:ts.default.ScriptTarget.ES2022}};
+  const donor=await readFile(new URL('../src/donationData.ts',import.meta.url),'utf8');
+  const source=(await readFile(new URL('../src/financeTransactions.ts',import.meta.url),'utf8'))
+    .replace("import { auth } from './firebase';",'')
+    .replace("import { readCsv } from './donationData';",'');
+  const js=ts.default.transpileModule(donor,options).outputText+'\n'+ts.default.transpileModule(source,options).outputText;
+  const {parseTransactionCsv,transactionCsvExample,transactionCsvDateRange,downloadTransactions}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+  const template=transactionCsvExample();
+  assert.match(template,/거래일시,거래구분,거래금액,거래 후 잔액,거래내용/);
+  const sample=parseTransactionCsv(template);
+  assert.equal(sample.length,2);
+  assert.equal(sample[0].dateTime,'2026-10-14T09:30');
+  assert.equal(sample[1].type,'출금');
+  const quoted=downloadTransactions([{dateTime:'2026-10-14T18:45',type:'입금',amount:'3000',balance:'148000',description:'"합주, 저녁"'}]);
+  assert.equal(parseTransactionCsv(quoted)[0].description,'"합주, 저녁"');
+  assert.deepEqual(transactionCsvDateRange([sample[1],sample[0]]),{start:'2026-10-14 09:30',end:'2026-10-14 15:30'});
+  assert.equal(transactionCsvDateRange([]),null);
+  assert.throws(()=>parseTransactionCsv('거래일시,금액\n2026-10-14,100'),/CSV 헤더/);
+  assert.throws(()=>parseTransactionCsv('거래일시,거래구분,거래금액,거래 후 잔액,거래내용\n2026-10-14,입금,10,50,수입'),/2026-10-14 15:30/);
+  assert.throws(()=>parseTransactionCsv('거래일시,거래구분,거래금액,거래 후 잔액,거래내용\n2026-10-14 24:00,입금,10,50,수입'),/거래일시/);
+  assert.throws(()=>parseTransactionCsv('거래일시,거래구분,거래금액,거래 후 잔액,거래내용\n2026-10-14 09:30,지출,10,50,사용'),/거래구분/);
+  assert.throws(()=>parseTransactionCsv('거래일시,거래구분,거래금액,거래 후 잔액,거래내용\n2026-10-14 09:30,입금,0,50,수입'),/거래금액/);
+});
 test('transaction records validate complete bank activity and the requested default account',()=>{
   assert.deepEqual(DEFAULT_ACCOUNT,{bank:'농협',number:'302-0000-0000-31',holder:'나재원'});
   assert.deepEqual(normalizeAccount(DEFAULT_ACCOUNT),DEFAULT_ACCOUNT);
@@ -190,6 +215,9 @@ test('private profile checks, role matrix, database writes and superadmin financ
     assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'upload',rows:[]}),env})).status,400);
     assert.equal((await expensesManagePost({request:financeRequest('member','expenses-manage',{action:'import',rows:[transaction]}),env})).status,403);
     assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:[]}),env})).status,400);
+    const beforeInvalidBatch=[...docs.keys()].filter(k=>k.startsWith(root+'/expenseTransactions/')).length;
+    assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:[transaction,{...transaction,amount:'-1'}]}),env})).status,400);
+    assert.equal([...docs.keys()].filter(k=>k.startsWith(root+'/expenseTransactions/')).length,beforeInvalidBatch);
     assert.equal((await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:Array.from({length:21},()=>transaction)}),env})).status,400);
     const importedExpenses=await expensesManagePost({request:financeRequest('staff','expenses-manage',{action:'import',rows:[
       {...transaction,dateTime:'2026-10-14T08:10',type:'입금',amount:'5000',balance:'55000'},
