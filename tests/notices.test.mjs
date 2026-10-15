@@ -354,3 +354,10 @@ test('notice image insertion expands URL and multi-file controls but never uploa
   assert.match(styles,/\.notice-composer-image-picker\{/);
   assert.doesNotMatch(composer,/uploadAboutImage|\/api\/about\/image|uploadBytes|addDoc\(/);
 });
+
+
+test('new image picker has top spacing while existing slide picker remains unaffected', async () => {
+  const composer=await readFile(new URL('../src/NoticeComposer.tsx',import.meta.url),'utf8');
+  assert.match(composer,/targetBlockId===undefined\?'notice-composer-image-picker is-new-image':'notice-composer-image-picker'/);
+  assert.match(styles,/\.notice-composer-image-picker\.is-new-image\{margin-top:16px\}/);
+});

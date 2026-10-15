@@ -128,7 +128,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   }
   function imagePicker(targetBlockId?:number) {
     const pickerLabel=targetBlockId===undefined?'본문 이미지':'슬라이드 이미지';
-    return <div className="notice-composer-image-picker" role="group" aria-label={pickerLabel+' 추가'}>
+    return <div className={targetBlockId===undefined?'notice-composer-image-picker is-new-image':'notice-composer-image-picker'} role="group" aria-label={pickerLabel+' 추가'}>
       <div className="notice-composer-image-picker-heading"><strong>이미지 추가</strong><span>이미지 URL 또는 파일을 선택하세요.</span></div>
       <div className="notice-composer-image-picker-controls">
         <label className="notice-composer-image-picker-url">이미지 URL

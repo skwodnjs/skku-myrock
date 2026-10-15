@@ -1820,3 +1820,6 @@ body:has([data-async-busy="true"]),body:has([data-async-busy="true"]) *{
   .notice-composer-image-picker-url{flex-basis:100%}
   .notice-composer-image-picker-controls>.outline-action{flex:1 1 auto}
 }
+
+/* Separate the newly opened image input panel from the existing content above it. */
+.notice-composer-image-picker.is-new-image{margin-top:16px}
