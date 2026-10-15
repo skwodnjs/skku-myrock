@@ -20,8 +20,9 @@ import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
+import NoticeComposer from './NoticeComposer';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'expenses' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -45,16 +46,17 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'schedule-detail' ? '/schedule' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
-  return match ? match[1] : null;
+  return match && match[1] !== 'write' ? match[1] : null;
 };
 const scheduleIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/schedule\/([a-z0-9-]+)\/?$/);
   return match ? match[1] : null;
 };
 const pathToPage = (): Page => {
+  if (/^\/news\/write\/?$/.test(window.location.pathname)) return 'notice-compose';
   if (noticeIdFromPath()) return 'notice-detail';
   if (scheduleIdFromPath()) return 'schedule-detail';
   if (/^\/finance\/donations\/?$/.test(window.location.pathname)) return 'donations';
@@ -162,7 +164,7 @@ function About({ navigate }: { navigate: Navigate }) {
 }
 
 
-function News({ notify, openNotice }: { notify: Notify; openNotice: (id: string) => void }) {
+function News({ canWrite, onWrite, openNotice }: { canWrite: boolean; onWrite: () => void; openNotice: (id: string) => void }) {
   const [category, setCategory] = useState('전체');
   const [query, setQuery] = useState('');
   const search = query.trim().toLocaleLowerCase('ko');
@@ -182,10 +184,9 @@ function News({ notify, openNotice }: { notify: Notify; openNotice: (id: string)
         <div className="toolbar-actions">
           <label className="input-search"><Search size={16}/><input aria-label="공지사항 검색"
             placeholder="제목 검색" value={query} onChange={e => setQuery(e.target.value)} /></label>
-          <button type="button" className="button button-primary"
-            onClick={() => notify('현재 공지사항은 개발용 고정 데이터입니다. 글쓰기는 추후 연결할 예정입니다.')}>
+          {canWrite && <button type="button" className="button button-primary" onClick={onWrite}>
             <Plus size={15}/> 글쓰기
-          </button>
+          </button>}
         </div>
       </div>
       <div className="table-shell">
@@ -383,7 +384,7 @@ function App() {
     return()=>{live=false;unsub();};
   },[]);
   useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());setActiveScheduleId(scheduleIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
+  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -456,7 +457,8 @@ function App() {
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} openNotice={openNotice}/>}
       {page==='about'&&<About navigate={navigate}/>}
-      {page==='news'&&<News notify={notify} openNotice={openNotice}/>}
+      {page==='news'&&<News canWrite={Boolean(user && !authPending && currentLevel)} onWrite={() => navigate('notice-compose')} openNotice={openNotice}/>}
+      {page==='notice-compose'&&(authPending ? <section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section> : user && currentLevel ? <NoticeComposer onBack={() => navigate('news')}/> : <section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="공지사항 글쓰기는 파트장 이상 운영진만 사용할 수 있습니다." /></section>)}
       {page==='notice-detail'&&<NoticeDetail notice={findNotice(activeNoticeId ?? '')} backToList={() => navigate('news')}/>}
       {page==='schedule'&&<ScheduleLanding
         canCreateTeam={Boolean(user && !authPending && currentLevel)}
