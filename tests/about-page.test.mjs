@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const app=await readFile(new URL('../src/App.tsx',import.meta.url),'utf8');
 const styles=await readFile(new URL('../src/styles.css',import.meta.url),'utf8');
 const defaults=await readFile(new URL('../src/aboutContent.ts',import.meta.url),'utf8');
-const editor=await readFile(new URL('../src/AboutManagement.tsx',import.meta.url),'utf8';
+const editor=await readFile(new URL('../src/AboutManagement.tsx',import.meta.url),'utf8');
 
 test('default introduction retains eight leaders and original two milestones',()=>{
   for(const name of ['김서연','신희수','배은성','허지원','정해준','김하은','추서현','김민현'])
