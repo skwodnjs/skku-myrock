@@ -1,5 +1,4 @@
 import { useEffect,useState } from 'react';
-import type { FormEvent } from 'react';
 import { ArrowLeft,Download,Plus,Save } from 'lucide-react';
 import { downloadTransactions,EMPTY_TRANSACTION,formatTransactionDate,formatWon,
   readExpensesForManagement,saveExpense,validateTransaction } from './financeTransactions';
@@ -26,8 +25,7 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
     const update=(current:EditState|null)=>current?{...current,record:{...current.record,[field]:value}}:null;
     if(adding)setAdd(update);else setEditing(update);
   }
-  async function save(event:FormEvent,adding=false){
-    event.preventDefault();
+  async function save(adding=false){
     const target=adding?add:editing;
     if(!target||busy)return;
     setError('');setMessage('');
@@ -49,21 +47,7 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
     document.body.appendChild(link);link.click();link.remove();
     window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  function editor(record:FinanceTransactionInput,adding:boolean) {
-    return <>
-      <td><input aria-label="거래일시" type="datetime-local" required value={record.dateTime} disabled={busy} onChange={e=>change('dateTime',e.target.value,adding)}/></td>
-      <td><select aria-label="거래구분" value={record.type} disabled={busy} onChange={e=>change('type',e.target.value,adding)}>
-        <option value="입금">입금</option><option value="출금">출금</option>
-      </select></td>
-      <td><input aria-label="거래금액" required inputMode="numeric" value={record.amount} disabled={busy} onChange={e=>change('amount',e.target.value,adding)}/></td>
-      <td><input aria-label="거래 후 잔액" required inputMode="numeric" value={record.balance} disabled={busy} onChange={e=>change('balance',e.target.value,adding)}/></td>
-      <td><input aria-label="거래내용" required maxLength={240} value={record.description} disabled={busy} onChange={e=>change('description',e.target.value,adding)}/></td>
-      <td className="finance-row-actions">
-        <button type="submit" className="outline-action" disabled={busy}><Save size={13}/> 저장</button>
-        <button type="button" className="outline-action" disabled={busy} onClick={()=>adding?setAdd(null):setEditing(null)}>취소</button>
-      </td>
-    </>;
-  }
+
   return <>
     <div className="page-heading container"><span className="eyebrow">FINANCE ADMINISTRATION</span><h1>회비 집행 내역 관리</h1>
       <p>동아리 계좌의 입금과 출금을 포함한 모든 거래를 기록합니다.</p></div>
@@ -83,7 +67,7 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
             <thead><tr><th>거래일시</th><th>거래구분</th><th>거래금액</th><th>거래 후 잔액</th><th>거래내용</th><th>관리</th></tr></thead>
             <tbody>
               {add&&<tr className="finance-inline-edit"><td colSpan={6}>
-                <form id="expense-add" onSubmit={e=>void save(e,true)} className="finance-inline-add-form">
+                <form id="expense-add" onSubmit={e=>{e.preventDefault();void save(true);}} className="finance-inline-add-form">
                   <div className="finance-inline-fields">
                     <label>거래일시<input type="datetime-local" required value={add.record.dateTime} onChange={e=>change('dateTime',e.target.value,true)}/></label>
                     <label>거래구분<select value={add.record.type} onChange={e=>change('type',e.target.value,true)}><option value="입금">입금</option><option value="출금">출금</option></select></label>
@@ -103,7 +87,7 @@ export default function ExpenseManagement({onBack}:{onBack:()=>void}){
                     <td><input aria-label="거래금액 수정" required inputMode="numeric" value={editing.record.amount} disabled={busy} onChange={e=>change('amount',e.target.value)}/></td>
                     <td><input aria-label="거래 후 잔액 수정" required inputMode="numeric" value={editing.record.balance} disabled={busy} onChange={e=>change('balance',e.target.value)}/></td>
                     <td><input aria-label="거래내용 수정" required maxLength={240} value={editing.record.description} disabled={busy} onChange={e=>change('description',e.target.value)}/></td>
-                    <td className="finance-row-actions"><button type="button" className="outline-action" disabled={busy} onClick={e=>void save(e as unknown as FormEvent,false)}><Save size={13}/> 저장</button>
+                    <td className="finance-row-actions"><button type="button" className="outline-action" disabled={busy} onClick={()=>void save(false)}><Save size={13}/> 저장</button>
                       <button type="button" className="outline-action" disabled={busy} onClick={()=>setEditing(null)}>취소</button></td>
                   </tr>:
                   <tr key={record.id}><td>{formatTransactionDate(record.dateTime)}</td><td>{record.type}</td><td>{formatWon(record.amount)}</td>
