@@ -20,13 +20,16 @@ import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import ExpenseManagement from './ExpenseManagement';
 import DonationManagement from './DonationManagement';
+import AboutManagement from './AboutManagement';
+import { DEFAULT_ABOUT,getAbout } from './aboutContent';
+import type { AboutContent } from './aboutContent';
 import { purgeDonations } from './donationApi';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
 import NoticeImageCarousel from './NoticeImageCarousel';
 import NoticeComposer from './NoticeComposer';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'expense-manage' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'about-manage' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'expense-manage' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -50,7 +53,7 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'expense-manage' ? '/finance/expenses/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'about-manage' ? '/about/manage' : page === 'expense-manage' ? '/finance/expenses/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match && match[1] !== 'write' ? match[1] : null;
@@ -60,6 +63,7 @@ const scheduleIdFromPath = (): string | null => {
   return match ? match[1] : null;
 };
 const pathToPage = (): Page => {
+  if (/^\/about\/manage\/?$/.test(window.location.pathname)) return 'about-manage';
   if (/^\/news\/write\/?$/.test(window.location.pathname)) return 'notice-compose';
   if (noticeIdFromPath()) return 'notice-detail';
   if (scheduleIdFromPath()) return 'schedule-detail';
@@ -129,17 +133,31 @@ const currentOfficers = [
   { name: '김민현', positions: '키보드파트장' },
 ] as const;
 
-function About({ navigate }: { navigate: Navigate }) {
+function About({ navigate, canEdit }: { navigate: Navigate;canEdit:boolean }) {
+  const [content,setContent]=useState<AboutContent>(DEFAULT_ABOUT);
+  const [loadError,setLoadError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    void getAbout().then(data=>{if(active)setContent(data.content);})
+      .catch(()=>{if(active)setLoadError('최신 소개 정보를 불러오지 못해 기본 소개 내용을 표시합니다.');});
+    return()=>{active=false;};
+  },[]);
   return <><PageHeading tag="ABOUT MYROCK" title="모여락 소개" description="함께 음악을 만들고 무대에 서는 사람들, 모여락을 소개합니다." />
-    <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div><Placeholder label="동아리 대표 사진" /></section>
+    <section className="container about-admin-tools">
+      {canEdit&&<button type="button" className="admin-only-action" onClick={()=>navigate('about-manage')}>정보 수정</button>}
+      {loadError&&<p role="status" className="about-load-error">{loadError}</p>}
+    </section>
+    <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div>
+      {content.heroImage?<img className="about-hero-image" src={content.heroImage} alt="동아리 대표 사진"/>:<Placeholder label="동아리 대표 사진"/>}
+    </section>
     <section className="container section-block" aria-label="28기 운영진 소개">
-      <SectionHeading title="운영진" aside="28기 운영진 소개" />
+      <SectionHeading title="운영진" aside={content.cohortLabel} />
       <div className="leadership-grid">
-        {currentOfficers.map(officer => <article className="leader-item" key={officer.name}>
-          <Placeholder label="사진" className="leader-photo" />
+        {content.officers.map(officer => <article className="leader-item" key={officer.id}>
+          {officer.photoUrl?<img className="leader-photo" src={officer.photoUrl} alt={officer.name+' 사진'}/>:<Placeholder label="사진" className="leader-photo" />}
           <div className="leader-description">
             <h3>{officer.name}</h3>
-            <p>{officer.positions}</p>
+            <p>{officer.position}</p>
           </div>
         </article>)}
       </div>
@@ -147,8 +165,7 @@ function About({ navigate }: { navigate: Navigate }) {
     <section className="container section-block">
       <SectionHeading title="연혁" aside="모여락의 활동 기록" />
       <div className="archive-timeline">
-        <div><span>199x년</span><p>모여락 창단</p></div>
-        <div><span>2023년</span><p>중앙동아리 승격</p></div>
+        {content.history.map(item=><div key={item.id}><span>{item.year}</span><p>{item.description}</p></div>)}
       </div>
     </section>
     <section className="container section-block about-social">
@@ -391,7 +408,7 @@ function App() {
     return()=>{live=false;unsub();};
   },[]);
   useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());setActiveScheduleId(scheduleIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expense-manage' ? '회비 집행 내역 관리' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
+  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expense-manage' ? '회비 집행 내역 관리' : page==='expenses' ? '회비 집행 내역' : page==='about-manage' ? '동아리 소개 수정' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -486,7 +503,8 @@ function App() {
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} openNotice={openNotice}/>}
-      {page==='about'&&<About navigate={navigate}/>}
+      {page==='about'&&<About navigate={navigate} canEdit={Boolean(user&&!authPending&&canManageDonations)}/>}
+       {page==='about-manage'&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다."/></section>:user&&canManageDonations?<AboutManagement onBack={()=>navigate('about')}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="동아리 소개 수정은 실무단 이상만 가능합니다."/></section>)}
       {page==='news'&&<News canWrite={Boolean(user && !authPending && currentLevel)} onWrite={() => navigate('notice-compose')} openNotice={openNotice}/>}
       {page==='notice-compose'&&(authPending ? <section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section> : user && currentLevel ? <NoticeComposer onBack={() => navigate('news')}/> : <section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="공지사항 글쓰기는 파트장 이상 운영진만 사용할 수 있습니다." /></section>)}
       {page==='notice-detail'&&<NoticeDetail notice={findNotice(activeNoticeId ?? '')} canViewAuthor={Boolean(user && !authPending && currentLevel)} backToList={() => navigate('news')}/>}
