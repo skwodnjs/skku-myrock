@@ -81,9 +81,10 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
     finally{setBusy(false);}
   }
   function downloadTemplate() {
-    const example=serializeDonationCsv([{
-      date:'2026-10-14',donorName:'홍길동',studentId:'2026300001',amount:'10000',anonymous:'x'
-    }]);
+    const example=serializeDonationCsv([
+      {date:'2026-10-14',donorName:'홍길동',studentId:'2026300001',amount:'10000',anonymous:''},
+      {date:'2026-10-15',donorName:'나재원',studentId:'2026300002',amount:'100000',anonymous:'o'}
+    ]);
     downloadTextCsv('myrock-donations-template.csv',example);
   }
   function downloadTextCsv(filename:string,contents:string) {
@@ -133,7 +134,7 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
               <input type="file" accept=".csv,text/csv" onChange={event=>void chooseCsv(event)} aria-label="후원 내역 CSV 파일 선택"/>
             </label>
             <button type="button" className="outline-action finance-manager-template" onClick={downloadTemplate}><Download size={15}/> 양식 내려받기</button>
-            <div className="finance-manager-csv-guidance"><span>날짜는 반드시 다음 예시와 같은 값을 사용해야 합니다. 예시) 2026-10-14</span><span>익명 여부 표시에는 'o'를 정확하게 사용해주세요.</span></div>
+            <div className="finance-manager-csv-guidance"><span>날짜는 반드시 다음 예시와 같은 값을 사용해야 합니다. 예시) 2026-10-14</span><span>익명 여부는 소문자 'o'일 때만 익명이며, 빈칸이면 공개됩니다.</span></div>
             {csvRows.length>0&&<div className="finance-manager-import-confirm">
               <strong>추가 준비: {csvRows.length}건{csvRange&&` (${csvRange.start} ~ ${csvRange.end})`}</strong><button type="button" className="button button-primary" disabled={busy} onClick={()=>void commitCsv()}>CSV {csvRows.length}건 추가</button>
               <button type="button" className="outline-action" disabled={busy} onClick={()=>setCsvRows([])}>취소</button>
@@ -196,9 +197,14 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
                 <label>학번<input required disabled={busy||pendingExclusions.includes(index)} pattern="[0-9]{10}" value={person.studentId} maxLength={10} inputMode="numeric" placeholder="숫자 10자리 학번" onChange={event=>{setPeople(previous=>previous.map((p,i)=>i===index?{...p,studentId:event.target.value}:p));markPeopleChanged();}}/></label>
               </>}
               <button type="button" className="outline-action" disabled={busy} onClick={()=>{
-                setPendingExclusions(previous=>previous.includes(index)?previous.filter(i=>i!==index):[...previous,index]);
+                if(!isSavedPerson(person)){
+                  setPeople(previous=>previous.filter((_,i)=>i!==index));
+                  setPendingExclusions(previous=>previous.filter(i=>i!==index).map(i=>i>index?i-1:i));
+                }else{
+                  setPendingExclusions(previous=>previous.includes(index)?previous.filter(i=>i!==index):[...previous,index]);
+                }
                 markPeopleChanged();
-              }}>{pendingExclusions.includes(index)?'제외 취소':'제외'}</button>
+              }}>{!isSavedPerson(person)?'삭제':pendingExclusions.includes(index)?'제외 취소':'제외'}</button>
             </div>)}
           </div>
           <div className="finance-manager-people-save">
