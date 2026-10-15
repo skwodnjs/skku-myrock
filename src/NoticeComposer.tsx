@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Link, Link2Off, Plus, Trash2 } from 'lucide-react';
 import type { NoticeCategory } from './noticesData';
+import { initialImageDimensions, MAX_IMAGE_DIMENSION, resizeImageDimensions } from './noticeImageSize';
+import type { DimensionAxis } from './noticeImageSize';
 
-type DraftBlock = { id: number; kind: 'text'; text: string } | { id: number; kind: 'image'; url: string; name: string };
+type DraftBlock = { id: number; kind: 'text'; text: string } | { id: number; kind: 'image'; url: string; name: string; width: number; height: number; ratioLocked: boolean };
 const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
 export default function NoticeComposer({ onBack }: { onBack: () => void }) {
@@ -32,7 +34,7 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
     const newImages: DraftBlock[] = selected.map(file => {
       const url = URL.createObjectURL(file);
       objectUrls.current.push(url);
-      return { id: nextId.current++, kind: 'image', url, name: file.name };
+      return { id: nextId.current++, kind: 'image', url, name: file.name, width: 0, height: 0, ratioLocked: true };
     });
     setBlocks(previous => [...previous, ...newImages]);
     setError('');
@@ -41,6 +43,18 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
   }
   function changeText(id: number, text: string) {
     setBlocks(previous => previous.map(block => block.id === id && block.kind === 'text' ? { ...block, text } : block));
+  }
+  function setNaturalSize(id: number, naturalWidth: number, naturalHeight: number) {
+    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image' && block.width === 0
+      ? { ...block, ...initialImageDimensions(naturalWidth, naturalHeight) } : block));
+  }
+  function changeImageSize(id: number, axis: DimensionAxis, value: number) {
+    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image'
+      ? { ...block, ...resizeImageDimensions(block, axis, value, block.ratioLocked) } : block));
+  }
+  function toggleImageRatio(id: number) {
+    setBlocks(previous => previous.map(block => block.id === id && block.kind === 'image'
+      ? { ...block, ratioLocked: !block.ratioLocked } : block));
   }
   function moveBlock(index: number, offset: number) {
     setBlocks(previous => {
@@ -83,7 +97,10 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
         <h3>{title.trim() || '제목 없음'}</h3>
         {blocks.map(block => block.kind === 'text'
           ? <p key={block.id}>{block.text || ' '}</p>
-          : <img key={block.id} src={block.url} alt={block.name}/>)}
+          : <div key={block.id} className="notice-composer-preview-image"
+              style={{ width: block.width || undefined, aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : undefined }}>
+              <img src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
+            </div>)}
       </div> : <div className="notice-composer-blocks">
         {blocks.map((block, index) => <div key={block.id} className="notice-composer-block">
           <div className="notice-composer-block-top">
@@ -97,7 +114,34 @@ export default function NoticeComposer({ onBack }: { onBack: () => void }) {
           {block.kind === 'text' ?
             <textarea aria-label={'본문 텍스트 ' + (index + 1)} value={block.text} rows={5} placeholder="내용을 입력하세요."
               onChange={event => changeText(block.id, event.target.value)}/> :
-            <div className="notice-composer-image"><img src={block.url} alt={block.name}/><small>{block.name}</small></div>}
+            <div className="notice-composer-image">
+              <div className="notice-composer-image-stage" style={{
+                width: block.width || undefined,
+                aspectRatio: block.width && block.height ? `${block.width} / ${block.height}` : undefined,
+              }}>
+                <img src={block.url} alt={block.name} onLoad={event => setNaturalSize(block.id, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}/>
+              </div>
+              <div className="notice-composer-dimensions" role="group" aria-label={`이미지 ${index + 1} 크기 조절`}>
+                <label>W
+                  <input type="number" min={1} max={MAX_IMAGE_DIMENSION} step={1} inputMode="numeric"
+                    aria-label={`이미지 ${index + 1} 가로 크기 (px)`} value={block.width || ''}
+                    disabled={!block.width} onChange={event => changeImageSize(block.id, 'width', Number(event.target.value))}/>
+                  <span>px</span>
+                </label>
+                <button type="button" className="notice-composer-ratio-toggle" onClick={() => toggleImageRatio(block.id)}
+                  aria-label={block.ratioLocked ? '가로 세로 비율 유지 해제' : '가로 세로 비율 유지'}
+                  aria-pressed={block.ratioLocked} title={block.ratioLocked ? '비율 유지 중' : '비율 자유 조절'}>
+                  {block.ratioLocked ? <Link size={19} aria-hidden="true"/> : <Link2Off size={19} aria-hidden="true"/>}
+                </button>
+                <label>H
+                  <input type="number" min={1} max={MAX_IMAGE_DIMENSION} step={1} inputMode="numeric"
+                    aria-label={`이미지 ${index + 1} 세로 크기 (px)`} value={block.height || ''}
+                    disabled={!block.height} onChange={event => changeImageSize(block.id, 'height', Number(event.target.value))}/>
+                  <span>px</span>
+                </label>
+              </div>
+              <small>{block.name}</small>
+            </div>}
         </div>)}
       </div>}
       {error && <p className="form-error" role="alert">{error}</p>}

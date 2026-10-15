@@ -3,6 +3,7 @@ export type NoticeCategory = '공지' | '행사' | '공연';
 export type NoticePost = {
   id: string;
   title: string;
+  author: string;
   category: NoticeCategory;
   publishedAt: string;
   date: string;
@@ -13,11 +14,13 @@ export type NoticePost = {
 };
 
 // Hardcoded notice archive, newest publication date first.
+// Author names are temporary demo assignments (two notices per person), not verified historical authors.
 // Preserve the original notice wording, dates and line breaks as provided.
 // When media storage is introduced, replace null image slots with image URLs.
 export const notices: readonly NoticePost[] = [
   {
     id: 'recruit-29-5',
+    author: '나재원',
     category: '공지',
     publishedAt: '2026-08-28',
     date: '2026. 08. 28.',
@@ -87,6 +90,7 @@ A: 락은 물론이고 아이돌 노래, 발라드, 인디, J-pop등 공연하�
   },
   {
     id: 'vocal-audition-29-5',
+    author: '나재원',
     category: '공지',
     publishedAt: '2026-08-21',
     date: '2026. 08. 21.',
@@ -133,6 +137,7 @@ A: 락은 물론이고 아이돌 노래, 발라드, 인디, J-pop등 공연하�
   },
   {
     id: 'homecoming-2026',
+    author: '김서연',
     category: '행사',
     publishedAt: '2026-08-18',
     date: '2026. 08. 18.',
@@ -172,6 +177,7 @@ A: 락은 물론이고 아이돌 노래, 발라드, 인디, J-pop등 공연하�
   },
   {
     id: 'summer-concert-2026',
+    author: '김서연',
     category: '공연',
     publishedAt: '2026-07-11',
     date: '2026. 07. 11.',
