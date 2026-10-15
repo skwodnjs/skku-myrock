@@ -1551,3 +1551,11 @@
   .notice-composer-gallery-file-label{flex-direction:column;align-items:flex-start;gap:1px}
   .notice-composer-gallery-filename{flex:none;width:100%}
 }
+
+
+/* Align the notice date heading and every visible date within the same grid column. */
+.notice-table-head>.notice-date-cell,.notice-table-row>.notice-date-cell{text-align:center}
+
+/* Desktop retains the '*' separator; mobile uses a two-line label with no separator. */
+.notice-composer-gallery-image-number::after{content:" *";white-space:pre}
+@media(max-width:700px){.notice-composer-gallery-image-number::after{content:none}}
