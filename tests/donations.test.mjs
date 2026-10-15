@@ -64,7 +64,7 @@ test('expense CSV template, preview and upload parser support quoted content and
   const js=ts.default.transpileModule(donor,options).outputText+'\n'+ts.default.transpileModule(source,options).outputText;
   const {parseTransactionCsv,transactionCsvExample,transactionCsvDateRange,downloadTransactions}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
   const template=transactionCsvExample();
-  assert.match(template,/거래일시,거래구분,거래금액,거래 후 잔액,거래내용/);
+  assert.match(template,/"거래일시","거래구분","거래금액","거래 후 잔액","거래내용"/);
   const sample=parseTransactionCsv(template);
   assert.equal(sample.length,2);
   assert.equal(sample[0].dateTime,'2026-10-14T09:30');
