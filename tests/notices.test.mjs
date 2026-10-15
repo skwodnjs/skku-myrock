@@ -345,6 +345,12 @@ test('notice image insertion expands URL and multi-file controls but never uploa
   assert.match(composer,/setSlidePickerId\(null\)/);
   assert.match(composer,/newImagePickerOpen&&imagePicker\(\)/);
   assert.match(composer,/slidePickerId===block.id&&imagePicker\(block.id\)/);
+  const pickerOffset=composer.lastIndexOf('{newImagePickerOpen&&imagePicker()}');
+  const buttonsOffset=composer.lastIndexOf('<div className="notice-composer-actions">');
+  const publishOffset=composer.lastIndexOf('<div className="notice-composer-publish">');
+  assert.ok(pickerOffset<buttonsOffset && buttonsOffset<publishOffset,
+    'the new image picker should expand directly above the action buttons');
+  assert.equal(composer.split('{newImagePickerOpen&&imagePicker()}').length-1,1);
   assert.match(styles,/\.notice-composer-image-picker\{/);
   assert.doesNotMatch(composer,/uploadAboutImage|\/api\/about\/image|uploadBytes|addDoc\(/);
 });
