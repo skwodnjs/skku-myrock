@@ -272,3 +272,18 @@ test('restore initial insertion dimensions and original aspect ratio per single 
   assert.equal(composer.split('최초 삽입 크기와 원본 비율로 복원').length - 1, 2);
   assert.doesNotMatch(composer, /원본 크기 복원|restoreOriginalDimensions/);
 });
+
+
+test('notice editor uses compact dimensions and hides the drag handle on mobile while retaining arrow reorder', async () => {
+  const composer = await readFile(new URL('../src/NoticeComposer.tsx', import.meta.url), 'utf8');
+  assert.match(styles, /\.notice-composer-dimensions input\{width:69px;min-width:0;height:32px;/);
+  assert.match(styles, /@media\(max-width:520px\)\{\.notice-composer-dimensions\{gap:7px\}\.notice-composer-dimensions input\{width:57px;/);
+  assert.match(styles, /\.notice-composer-ratio-toggle\{[^}]*width:32px;height:32px;/);
+  assert.match(styles, /\.notice-composer-original-size\{[^}]*height:32px;/);
+  assert.match(styles, /@media\(max-width:700px\)\{\.notice-composer-gallery-drag-handle\{display:none\}\}/);
+  assert.match(styles, /\.notice-composer-dimensions input\[type=number\]\{appearance:textfield;/);
+  assert.match(composer, /onClick=\{\(\) => moveGallerySlide\(block\.id, image\.id, -1\)\}/);
+  assert.match(composer, /onClick=\{\(\) => moveGallerySlide\(block\.id, image\.id, 1\)\}/);
+  assert.match(composer, /onDragStart=\{event => startSlideDrag\(event, block\.id, image\.id\)\}/);
+  assert.match(composer, /<NoticeImageCarousel label="작성 중인 이미지 슬라이드"/);
+});

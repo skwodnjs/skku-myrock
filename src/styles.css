@@ -1474,12 +1474,13 @@
 .notice-composer-preview-image{margin:0 auto 25px}
 .notice-composer-dimensions{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:5px 0 4px}
 .notice-composer-dimensions label{display:flex;align-items:center;gap:7px;color:#627b6d;font-size:12px;font-weight:700}
-.notice-composer-dimensions input{width:90px;min-width:0;height:36px;box-sizing:border-box;border:1px solid #dce4e1;border-radius:2px;padding:0 9px;color:var(--ink);background:#fff;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+/* Compact W/H controls shared by single images and grouped slides. */
+.notice-composer-dimensions input{width:69px;min-width:0;height:32px;box-sizing:border-box;border:1px solid #dce4e1;border-radius:2px;padding:0 9px;color:var(--ink);background:#fff;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
 .notice-composer-dimensions label span{font-size:11px;color:#91a095;font-weight:400}
 .notice-composer-dimensions input:focus-visible,.notice-composer-ratio-toggle:focus-visible{outline:2px solid #a8d2bd;outline-offset:2px}
-.notice-composer-ratio-toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #cbded3;background:#f4f9f5;color:#43765a;cursor:pointer}
+.notice-composer-ratio-toggle{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid #cbded3;background:#f4f9f5;color:#43765a;cursor:pointer}
 .notice-composer-ratio-toggle[aria-pressed=false]{background:#fff;color:#92a49b}
-@media(max-width:520px){.notice-composer-dimensions{gap:7px}.notice-composer-dimensions input{width:74px}}
+@media(max-width:520px){.notice-composer-dimensions{gap:7px}.notice-composer-dimensions input{width:57px;padding-inline:5px}}
 
 
 /* Image carousels shared by static notices and the non-persistent composer. */
@@ -1524,6 +1525,12 @@
 .notice-composer-gallery-order-actions{display:flex;gap:4px;align-items:center;margin-left:auto}
 .notice-composer-gallery-order-actions button:disabled{opacity:.35;cursor:default}
 .notice-composer-gallery-thumb{width:42px;height:42px;max-height:none;object-fit:cover;flex:0 0 auto;border:1px solid #dae7dd}
-.notice-composer-original-size{display:inline-flex;gap:6px;align-items:center;justify-content:center;height:36px;padding:0 10px;border:1px solid #cbded3;background:#fff;color:#4a7760;font-size:11px;cursor:pointer}
+.notice-composer-original-size{display:inline-flex;gap:6px;align-items:center;justify-content:center;height:32px;padding:0 10px;border:1px solid #cbded3;background:#fff;color:#4a7760;font-size:11px;cursor:pointer}
 .notice-composer-original-size:disabled{opacity:.4;cursor:default}
 @media(max-width:520px){.notice-composer-gallery-size-heading{flex-wrap:wrap}.notice-composer-gallery-order-actions{margin-left:0}.notice-composer-gallery-thumb{width:35px;height:35px}}
+
+/* On mobile, slide ordering uses the right-side arrow buttons, not drag handles. */
+@media(max-width:700px){.notice-composer-gallery-drag-handle{display:none}}
+/* Keep the narrower numeric inputs readable without browser spinner chrome. */
+.notice-composer-dimensions input[type=number]{appearance:textfield;-moz-appearance:textfield}
+.notice-composer-dimensions input[type=number]::-webkit-inner-spin-button,.notice-composer-dimensions input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
