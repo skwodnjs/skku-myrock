@@ -208,13 +208,15 @@ export default function DonationManagement({onBack}:{onBack:()=>void}) {
           </div>
           <div className="finance-manager-people-save">
             <button type="button" className="button button-primary" disabled={busy||!peopleChanged} aria-disabled={busy||!peopleChanged} onClick={()=>void persistPeople()}>익명자 명단 저장</button>
-            <div className="finance-manager-people-feedback" aria-live="polite">
-              {peopleError&&<p role="alert" className="finance-manager-people-error">{peopleError}</p>}
-              {peopleMessage&&<p role="status" className="finance-manager-people-success">{peopleMessage}</p>}
-            </div>
+
           </div>
         </section>
       </>}
     </div>
+    {(peopleError||peopleMessage)&&<div className={'site-bottom-toast'+(peopleError?' is-error':' is-success')}
+      role={peopleError?'alert':'status'} aria-live="polite">
+      <span>{peopleError||peopleMessage}</span>
+      <button type="button" aria-label="알림 닫기" onClick={()=>{setPeopleError('');setPeopleMessage('');}}>닫기</button>
+    </div>}
   </>;
 }
