@@ -13,7 +13,7 @@ export function normalizeDonation(input) {
   if (donorName.length > 80 || (studentId !== '' && !/^\d{10}$/.test(studentId))) reject('후원자명 또는 학번 형식을 확인해 주세요.');
   if (!/^\d{1,12}$/.test(amount) || BigInt(amount) < 1n || BigInt(amount) > 1000000000000n) reject('후원금액은 양의 정수여야 합니다.');
   return { date, donorName, studentId, amount: String(BigInt(amount)),
-    anonymous: String(input.anonymous ?? '').trim().toLowerCase() === 'o' ? 'o' : 'x' };
+    anonymous: String(input.anonymous ?? '').trim() === 'o' ? 'o' : 'x' };
 }
 export function normalizeAnonymousPeople(input) {
   if (!Array.isArray(input) || input.length > 500) reject('익명자 명단은 최대 500명입니다.');
