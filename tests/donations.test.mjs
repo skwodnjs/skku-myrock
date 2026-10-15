@@ -8,6 +8,10 @@ import { onRequestGet as publicGet } from '../functions/api/donations/public.js'
 import { onRequestGet as mineGet } from '../functions/api/donations/mine.js';
 import { onRequestGet as manageGet,onRequestPost as managePost } from '../functions/api/donations/manage.js';
 import { onRequestPost as purgePost, DONATIONS_RESET_CONFIRMATION } from '../functions/api/donations/purge.js';
+import { DEFAULT_ABOUT,normalizeAbout } from '../functions/_lib/aboutContent.js';
+import { onRequestGet as publicAboutGet,onRequestPost as aboutPost } from '../functions/api/about/content.js';
+import { onRequestGet as manageAboutGet } from '../functions/api/about/manage.js';
+import { onRequestPost as aboutImagePost } from '../functions/api/about/image.js';
 import { normalizeAccount,normalizeTransaction,DEFAULT_ACCOUNT } from '../functions/_lib/financeTransactions.js';
 import { onRequestGet as accountGet,onRequestPost as accountPost } from '../functions/api/finance/account.js';
 import { onRequestGet as accountManageGet } from '../functions/api/finance/account-manage.js';
@@ -32,6 +36,15 @@ test('CSV semantics: only o is anonymous; unrecognized identifiers and same-name
   assert.equal(publicDonation({...sample,id:'donation1',studentId:'2026300002',anonymous:'x'},people).donorName,'홍길동');
   assert.throws(()=>normalizeDonation({...sample,studentId:'not-an-id'}),/학번/);
   assert.throws(()=>normalizeDonation({...sample,amount:'-10'}),/후원금액/);
+});
+test('club introduction validates officer names, history and safe image URL schemes',()=>{
+  assert.equal(normalizeAbout(DEFAULT_ABOUT).officers.length,8);
+  assert.equal(normalizeAbout(DEFAULT_ABOUT).history.length,2);
+  assert.throws(()=>normalizeAbout({...DEFAULT_ABOUT,heroImage:'javascript:alert(1)'}),/HTTPS/);
+  assert.throws(()=>normalizeAbout({...DEFAULT_ABOUT,history:[{id:'x',year:'',description:'내용'}]}),/연혁 연도/);
+  assert.throws(()=>normalizeAbout({...DEFAULT_ABOUT,officers:[{id:'x',name:'',position:'운영진',photoUrl:''}]}),/운영진 이름/);
+  assert.throws(()=>normalizeAbout({...DEFAULT_ABOUT,officers:[{id:'dup',name:'A',position:'실무단',photoUrl:''}],
+    history:[{id:'dup',year:'2026',description:'창단'}]}),/ID/);
 });
 test('CSV file parsing supports optional names and student IDs and safe re-export',async()=>{
   const ts=await readFile(new URL('../src/donationData.ts',import.meta.url),'utf8');
@@ -202,6 +215,37 @@ test('private profile checks, role matrix, database writes and superadmin financ
     const bankVersion=(await changedAccount.json()).account.updateTime;
     assert.equal((await accountPost({request:financeRequest('super','account',{account:DEFAULT_ACCOUNT,expectedUpdateTime:'2026-10-15T00:00:01Z'}),env})).status,409);
     assert.equal((await accountPost({request:financeRequest('super','account',{account:DEFAULT_ACCOUNT,expectedUpdateTime:bankVersion}),env})).status,200);
+    const aboutReq=(as,path,body)=>new Request('https://skku-myrock.pages.dev/api/about/'+path,{
+      method:body?'POST':'GET',
+      headers:{...(body?{'content-type':'application/json'}:{}),...(as?{authorization:'Bearer '+token[as]}:{})},
+      body:body?JSON.stringify(body):undefined,
+    });
+    assert.equal((await publicAboutGet({request:aboutReq(null,'content'),env})).status,200);
+    assert.equal((await manageAboutGet({request:aboutReq('member','manage'),env})).status,403);
+    assert.equal((await manageAboutGet({request:aboutReq('staff','manage'),env})).status,200);
+    assert.equal((await aboutPost({request:aboutReq('member','content',{content:DEFAULT_ABOUT}),env})).status,403);
+    const stored=await aboutPost({request:aboutReq('staff','content',{content:DEFAULT_ABOUT,expectedUpdateTime:null}),env});
+    assert.equal(stored.status,200);
+    const storedVersion=(await stored.json()).updateTime;
+    assert.equal((await aboutPost({request:aboutReq('staff','content',{content:DEFAULT_ABOUT,expectedUpdateTime:null}),env})).status,409);
+    const modified={...DEFAULT_ABOUT,cohortLabel:'29기 운영진 소개'};
+    assert.equal((await aboutPost({request:aboutReq('staff','content',{content:modified,expectedUpdateTime:storedVersion}),env})).status,200);
+    assert.equal((await (await publicAboutGet({request:aboutReq(null,'content'),env})).json()).content.cohortLabel,'29기 운영진 소개');
+    const imagePayload=new FormData();
+    imagePayload.append('image',new Blob([new Uint8Array([137,80,78,71,13,10,26,10])],{type:'image/png'}),'test.png');
+    const publicFileRequest=await new Request('https://skku-myrock.pages.dev/api/about/image',{method:'POST',
+      headers:{authorization:'Bearer '+token.member},body:imagePayload});
+    assert.equal((await aboutImagePost({request:publicFileRequest,env})).status,403);
+    const imageObject=new Map();
+    const imageEnv={...env,MYROCK_IMAGES:{put:async(key,data,metadata)=>{imageObject.set(key,{data,metadata});}}};
+    const uploadPayload=new FormData();
+    uploadPayload.append('image',new Blob([new Uint8Array([137,80,78,71,13,10,26,10])],{type:'image/png'}),'test.png');
+    const uploadReq=new Request('https://skku-myrock.pages.dev/api/about/image',{method:'POST',
+      headers:{authorization:'Bearer '+token.staff},body:uploadPayload});
+    const uploaded=await aboutImagePost({request:uploadReq,env:imageEnv});
+    assert.equal(uploaded.status,200);
+    assert.match((await uploaded.json()).url,/^\/api\/about\/image\?key=about\//);
+    assert.equal(imageObject.size,1);
     assert.equal((await expensesManageGet({request:financeRequest('member','expenses-manage'),env})).status,403);
     assert.equal((await expensesManageGet({request:financeRequest('staff','expenses-manage'),env})).status,200);
     const transaction={dateTime:'2026-10-15T12:30',type:'출금',amount:'10000',balance:'50000',description:'합주실 대여'};
@@ -234,10 +278,19 @@ test('private profile checks, role matrix, database writes and superadmin financ
     assert.equal((await editedExpense.json()).record.description,'드럼 수리');
     assert.equal((await purgePost({request:request('staff','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env})).status,403);
     assert.equal((await purgePost({request:request('super','purge',{confirmation:'잘못된 확인'}),env})).status,400);
-    const reset=await purgePost({request:request('super','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env});
-    assert.equal(reset.status,200);assert.equal((await reset.json()).done,true);
+    let complete=false,removed=0;
+    for(let attempt=0;attempt<12&&!complete;attempt++){
+      const reset=await purgePost({request:request('super','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env});
+      assert.equal(reset.status,200);
+      const result=await reset.json();
+      complete=result.done;removed+=result.deleted;
+    }
+    assert.equal(complete,true);
+    assert.ok(removed>=5);
     assert.equal([...docs.keys()].filter(key=>key.startsWith(root+'/donations/')).length,0);
+    assert.equal([...docs.keys()].filter(key=>key.startsWith(root+'/expenseTransactions/')).length,0);
     assert.equal(docs.has(root+'/financeSettings/anonymousDonors'),false);
+    assert.equal(docs.has(root+'/financeSettings/donationAccount'),true,'account details should be preserved');
     assert.equal(docs.has(root+'/users/'+actors.member.uid),true);
   }finally{globalThis.fetch=previousFetch;}
 });

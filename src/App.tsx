@@ -20,13 +20,16 @@ import { findSchedule, ScheduleDetail, ScheduleLanding } from './SchedulePages';
 import { DonationHistory, ExpenseHistory, FinanceLanding } from './FinancePages';
 import ExpenseManagement from './ExpenseManagement';
 import DonationManagement from './DonationManagement';
+import AboutManagement from './AboutManagement';
+import { DEFAULT_ABOUT,getAbout } from './aboutContent';
+import type { AboutContent } from './aboutContent';
 import { purgeDonations } from './donationApi';
 import { findNotice, notices } from './noticesData';
 import type { NoticePost } from './noticesData';
 import NoticeImageCarousel from './NoticeImageCarousel';
 import NoticeComposer from './NoticeComposer';
 
-type Page = 'home' | 'about' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'expense-manage' | 'handover' | 'members' | 'profile';
+type Page = 'home' | 'about' | 'about-manage' | 'news' | 'notice-detail' | 'notice-compose' | 'schedule' | 'schedule-detail' | 'gallery' | 'equipment' | 'finance' | 'donations' | 'donation-manage' | 'expenses' | 'expense-manage' | 'handover' | 'members' | 'profile';
 type Navigate = (page: Page) => void;
 type Notify = (message?: string) => void;
 type NavItem = { id: Page; label: string };
@@ -50,7 +53,7 @@ const profileRoleLabel = (profile: MemberProfile): string =>
   : profile.role === 'part_leader' ? '파트장'
   : profile.handoverAccess ? 'OB 운영진' : '일반부원';
 const canViewHandover = (profile: MemberProfile | null, hasSystemClaim: boolean) => Boolean(profile && (profile.role !== 'member' || profile.handoverAccess || (profile.superadmin && hasSystemClaim)));
-const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'expense-manage' ? '/finance/expenses/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
+const pathFor = (page: Page) => page === 'home' ? '/' : page === 'notice-detail' ? '/news' : page === 'notice-compose' ? '/news/write' : page === 'schedule-detail' ? '/schedule' : page === 'donation-manage' ? '/finance/donations/manage' : page === 'about-manage' ? '/about/manage' : page === 'expense-manage' ? '/finance/expenses/manage' : page === 'donations' || page === 'expenses' ? `/finance/${page}` : `/${page}`;
 const noticeIdFromPath = (): string | null => {
   const match = window.location.pathname.match(/^\/news\/([a-z0-9-]+)\/?$/);
   return match && match[1] !== 'write' ? match[1] : null;
@@ -60,6 +63,7 @@ const scheduleIdFromPath = (): string | null => {
   return match ? match[1] : null;
 };
 const pathToPage = (): Page => {
+  if (/^\/about\/manage\/?$/.test(window.location.pathname)) return 'about-manage';
   if (/^\/news\/write\/?$/.test(window.location.pathname)) return 'notice-compose';
   if (noticeIdFromPath()) return 'notice-detail';
   if (scheduleIdFromPath()) return 'schedule-detail';
@@ -118,28 +122,31 @@ function Home({ navigate, openNotice }: { navigate: Navigate; openNotice: (id: s
   </>;
 }
 
-const currentOfficers = [
-  { name: '김서연', positions: '회장, 보컬파트장' },
-  { name: '신희수', positions: '부회장' },
-  { name: '배은성', positions: '공연부장, 기타파트장' },
-  { name: '허지원', positions: '총무' },
-  { name: '정해준', positions: '홍보부장' },
-  { name: '김하은', positions: '베이스파트장' },
-  { name: '추서현', positions: '드럼파트장' },
-  { name: '김민현', positions: '키보드파트장' },
-] as const;
-
-function About({ navigate }: { navigate: Navigate }) {
+function About({ navigate, canEdit }: { navigate: Navigate;canEdit:boolean }) {
+  const [content,setContent]=useState<AboutContent>(DEFAULT_ABOUT);
+  const [loadError,setLoadError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    void getAbout().then(data=>{if(active)setContent(data.content);})
+      .catch(()=>{if(active)setLoadError('최신 소개 정보를 불러오지 못해 기본 소개 내용을 표시합니다.');});
+    return()=>{active=false;};
+  },[]);
   return <><PageHeading tag="ABOUT MYROCK" title="모여락 소개" description="함께 음악을 만들고 무대에 서는 사람들, 모여락을 소개합니다." />
-    <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div><Placeholder label="동아리 대표 사진" /></section>
+    <section className="container about-admin-tools">
+      {canEdit&&<button type="button" className="admin-only-action" onClick={()=>navigate('about-manage')}>정보 수정</button>}
+      {loadError&&<p role="status" className="about-load-error">{loadError}</p>}
+    </section>
+    <section className="container about-intro section-block"><div className="about-description"><h2>음악을 좋아하는 사람들이<br />함께하는 공간</h2><p>보컬, 기타, 베이스, 드럼, 키보드. 서로 다른 소리로 모여 한 곡을 완성합니다. 이곳에는 동아리 소개와 활동 이야기가 정리될 예정입니다.</p><TextLink onClick={() => navigate('gallery')}>활동 사진 보러 가기</TextLink></div>
+      {content.heroImage?<img className="about-hero-image" src={content.heroImage} alt="동아리 대표 사진"/>:<Placeholder label="동아리 대표 사진"/>}
+    </section>
     <section className="container section-block" aria-label="28기 운영진 소개">
-      <SectionHeading title="운영진" aside="28기 운영진 소개" />
+      <SectionHeading title="운영진" aside={content.cohortLabel} />
       <div className="leadership-grid">
-        {currentOfficers.map(officer => <article className="leader-item" key={officer.name}>
-          <Placeholder label="사진" className="leader-photo" />
+        {content.officers.map(officer => <article className="leader-item" key={officer.id}>
+          {officer.photoUrl?<img className="leader-photo" src={officer.photoUrl} alt={officer.name+' 사진'}/>:<Placeholder label="사진" className="leader-photo" />}
           <div className="leader-description">
             <h3>{officer.name}</h3>
-            <p>{officer.positions}</p>
+            <p>{officer.position}</p>
           </div>
         </article>)}
       </div>
@@ -147,8 +154,7 @@ function About({ navigate }: { navigate: Navigate }) {
     <section className="container section-block">
       <SectionHeading title="연혁" aside="모여락의 활동 기록" />
       <div className="archive-timeline">
-        <div><span>199x년</span><p>모여락 창단</p></div>
-        <div><span>2023년</span><p>중앙동아리 승격</p></div>
+        {content.history.map(item=><div key={item.id}><span>{item.year}</span><p>{item.description}</p></div>)}
       </div>
     </section>
     <section className="container section-block about-social">
@@ -391,7 +397,7 @@ function App() {
     return()=>{live=false;unsub();};
   },[]);
   useEffect(()=>{const onPop=()=>{setPage(pathToPage());setActiveNoticeId(noticeIdFromPath());setActiveScheduleId(scheduleIdFromPath());};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop);},[]);
-  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expense-manage' ? '회비 집행 내역 관리' : page==='expenses' ? '회비 집행 내역' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
+  useEffect(()=>{document.title=`${page==='notice-compose' ? '공지사항 글쓰기' : page==='notice-detail' ? (findNotice(activeNoticeId ?? '')?.title ?? '공지사항') : page==='schedule-detail' ? (findSchedule(activeScheduleId ?? '')?.title ?? '합주 시간표') : page==='donations' ? '후원 내역' : page==='expense-manage' ? '회비 집행 내역 관리' : page==='expenses' ? '회비 집행 내역' : page==='about-manage' ? '동아리 소개 수정' : page==='home' ? '모여락' : allNav.find(n=>n.id===page)?.label ?? '모여락'} | MYROCK`;},[page,activeNoticeId,activeScheduleId]);
   useEffect(()=>{document.body.style.overflow=loginOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[loginOpen]);
   useEffect(()=>{const onEscape=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);}};window.addEventListener('keydown',onEscape);return()=>window.removeEventListener('keydown',onEscape);},[]);
   const navigate: Navigate = next => { if(window.location.pathname!==pathFor(next))window.history.pushState(null,'',pathFor(next));setPage(next);setOpenGroup(null);setAccountOpen(false);setMenuOpen(false);window.scrollTo({top:0,behavior:'instant'});};
@@ -442,9 +448,9 @@ function App() {
   }
   async function resetDonationFinance() {
     if(financeResetting||!user||!profile?.superadmin||!hasSystemClaim)return;
-    const typed=window.prompt('모든 후원 기록과 익명자 명단이 영구 삭제됩니다. 계속하려면 후원회계 초기화를 입력하세요.');
-    if(typed!=='후원회계 초기화')return;
-    if(!window.confirm('후원회계 전체 데이터를 영구 삭제합니다. 복구할 수 없습니다. 실행할까요?'))return;
+    const typed=window.prompt('모든 후원 기록과 익명자 명단, 회비 집행 내역이 영구 삭제됩니다. 계속하려면 후원 · 회계 초기화를 입력하세요.');
+    if(typed!=='후원 · 회계 초기화')return;
+    if(!window.confirm('후원과 회비 집행 내역 전체를 영구 삭제합니다. 복구할 수 없습니다. 실행할까요?'))return;
     setFinanceResetting(true);setAccountOpen(false);setMenuOpen(false);
     let removed=0;
     try {
@@ -456,9 +462,9 @@ function App() {
       if(!complete)throw Error('초기화 허용 처리 횟수를 초과했습니다.');
       setFinanceRevision(prev=>prev+1);
       navigate('donations');
-      window.alert('후원회계 초기화가 완료되었습니다. 삭제된 기록: '+removed+'건');
+      window.alert('후원 · 회계 초기화가 완료되었습니다. 삭제된 기록: '+removed+'건');
     }catch(error) {
-      window.alert('후원회계 초기화가 중단되었습니다. '+(error instanceof Error?error.message:'서버 오류')+'\n관리 화면에서 남은 데이터를 확인해 주세요.');
+      window.alert('후원 · 회계 초기화가 중단되었습니다. '+(error instanceof Error?error.message:'서버 오류')+'\n관리 화면에서 남은 데이터를 확인해 주세요.');
       setFinanceRevision(prev=>prev+1);
     }finally{setFinanceResetting(false);}
   }
@@ -479,14 +485,15 @@ function App() {
           onBlur={event => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setAccountOpen(false); }}
         ><button className="login-button account-toggle" type="button"
           onClick={() => { if (!window.matchMedia('(hover: hover)').matches) setAccountOpen(previous => !previous); }}
-          aria-haspopup="menu" aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃</button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화</button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원회계 초기화</button></>}</div>}</div>}
+          aria-haspopup="menu" aria-expanded={accountOpen}><UserRound size={15}/>{profile?.name??'내 계정'}<ChevronDown size={13}/></button>{accountOpen&&<div className="more-menu account-menu"><button type="button" onClick={()=>navigate('profile')}>내 정보</button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리</button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계</button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃</button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화</button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원 · 회계 초기화</button></>}</div>}</div>}
         <button type="button" className="mobile-menu-button" onClick={()=>setMenuOpen(!menuOpen)} aria-label={menuOpen?'메뉴 닫기':'메뉴 열기'} aria-expanded={menuOpen}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
       </div>
-    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원회계 초기화<Trash2 size={15}/></button></>}</>}</div></nav>}
+    </div>{menuOpen&&<nav className="mobile-nav" aria-label="모바일 메뉴"><div className="container">{navGroups.map(group=><div className="mobile-group" key={group.label}><button type="button" aria-expanded={openGroup===group.label} onClick={()=>setOpenGroup(openGroup===group.label?null:group.label)}><strong>{group.label}</strong><ChevronDown size={16}/></button>{openGroup===group.label&&<div className="mobile-submenu">{group.items.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}>{item.label}</button>)}</div>}</div>)}{user&&<><button type="button" onClick={()=>navigate('profile')}>내 정보<ArrowRight size={16}/></button>{canManage&&<button type="button" onClick={()=>navigate('members')}>부원 관리<ArrowRight size={16}/></button>}{canHandover&&<button type="button" onClick={()=>navigate('handover')}>인수인계<ArrowRight size={16}/></button>}<button type="button" onClick={logout} disabled={rosterResetting}>로그아웃<LogOut size={16}/></button>{isDeveloperSuperadmin && <><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetRosterExceptMyself()}>명단 초기화<Trash2 size={15}/></button><button type="button" className="developer-reset-action" disabled={rosterResetting||financeResetting} onClick={() => void resetDonationFinance()}>후원 · 회계 초기화<Trash2 size={15}/></button></>}</>}</div></nav>}
     </header>
     <main key={page}>
       {page==='home'&&<Home navigate={navigate} openNotice={openNotice}/>}
-      {page==='about'&&<About navigate={navigate}/>}
+      {page==='about'&&<About navigate={navigate} canEdit={Boolean(user&&!authPending&&canManageDonations)}/>}
+       {page==='about-manage'&&(authPending?<section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다."/></section>:user&&canManageDonations?<AboutManagement onBack={()=>navigate('about')}/>:<section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="동아리 소개 수정은 실무단 이상만 가능합니다."/></section>)}
       {page==='news'&&<News canWrite={Boolean(user && !authPending && currentLevel)} onWrite={() => navigate('notice-compose')} openNotice={openNotice}/>}
       {page==='notice-compose'&&(authPending ? <section className="container section-block"><EmptyState title="권한 확인 중" description="로그인 상태를 확인하고 있습니다." /></section> : user && currentLevel ? <NoticeComposer onBack={() => navigate('news')}/> : <section className="container section-block"><EmptyState icon={<LockKeyhole size={26}/>} title="접근 권한이 없습니다" description="공지사항 글쓰기는 파트장 이상 운영진만 사용할 수 있습니다." /></section>)}
       {page==='notice-detail'&&<NoticeDetail notice={findNotice(activeNoticeId ?? '')} canViewAuthor={Boolean(user && !authPending && currentLevel)} backToList={() => navigate('news')}/>}

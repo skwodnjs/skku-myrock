@@ -20,4 +20,4 @@ export const getDonationManagement=()=>call<ManageData>('manage',undefined,true)
 export const saveDonation=(record:DonationInput,id?:string,expectedUpdateTime?:string)=>call<{record:DonationRecord}>('manage',{action:'save',record,id,expectedUpdateTime},true);
 export const importDonations=(rows:DonationInput[])=>call<{added:number}>('manage',{action:'import',rows},true);
 export const saveAnonymousPeople=(people:AnonymousPerson[],expectedUpdateTime:string|null)=>call<{people:AnonymousPerson[];registryUpdateTime:string}>('manage',{action:'people',people,expectedUpdateTime},true);
-export const purgeDonations=()=>call<{deleted:number;done:boolean}>('purge',{confirmation:'후원회계 초기화'},true);
+export const purgeDonations=()=>call<{deleted:number;done:boolean}>('purge',{confirmation:'후원 · 회계 초기화'},true);
