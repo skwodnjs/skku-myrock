@@ -234,10 +234,19 @@ test('private profile checks, role matrix, database writes and superadmin financ
     assert.equal((await editedExpense.json()).record.description,'드럼 수리');
     assert.equal((await purgePost({request:request('staff','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env})).status,403);
     assert.equal((await purgePost({request:request('super','purge',{confirmation:'잘못된 확인'}),env})).status,400);
-    const reset=await purgePost({request:request('super','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env});
-    assert.equal(reset.status,200);assert.equal((await reset.json()).done,true);
+    let complete=false,removed=0;
+    for(let attempt=0;attempt<12&&!complete;attempt++){
+      const reset=await purgePost({request:request('super','purge',{confirmation:DONATIONS_RESET_CONFIRMATION}),env});
+      assert.equal(reset.status,200);
+      const result=await reset.json();
+      complete=result.done;removed+=result.deleted;
+    }
+    assert.equal(complete,true);
+    assert.ok(removed>=5);
     assert.equal([...docs.keys()].filter(key=>key.startsWith(root+'/donations/')).length,0);
+    assert.equal([...docs.keys()].filter(key=>key.startsWith(root+'/expenseTransactions/')).length,0);
     assert.equal(docs.has(root+'/financeSettings/anonymousDonors'),false);
+    assert.equal(docs.has(root+'/financeSettings/donationAccount'),true,'account details should be preserved');
     assert.equal(docs.has(root+'/users/'+actors.member.uid),true);
   }finally{globalThis.fetch=previousFetch;}
 });
