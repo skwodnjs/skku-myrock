@@ -1734,3 +1734,56 @@ button:disabled{cursor:default!important}
 body:has([data-async-busy="true"]),body:has([data-async-busy="true"]) *{
   cursor:wait!important
 }
+
+
+/* Same managerial color only for privileged actions visible on otherwise public pages. */
+.admin-only-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 16px;border:1px solid #355b67;background:#355b67;color:#fff;
+  font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;cursor:pointer;
+  transition:background .15s,border-color .15s}
+.admin-only-action:hover:not(:disabled){background:#254752;border-color:#254752}
+.admin-only-action:disabled{opacity:.48}
+.finance-account-heading>.admin-only-action{flex:0 0 auto}
+.about-admin-tools{display:flex;align-items:center;justify-content:flex-end;gap:16px;margin-top:10px}
+.about-load-error{margin:0;color:#a36c4c;font-size:11px}
+.about-hero-image{display:block;width:100%;max-height:450px;object-fit:contain;background:#f6f8f6}
+.leader-item img.leader-photo{display:block;width:76px;min-width:76px;aspect-ratio:3/4;object-fit:cover}
+.about-manage{margin-bottom:90px}
+.about-manage-section{border-top:1px solid #bdcec3;margin:28px 0 36px;padding-top:23px}
+.about-manage-section h2{font-size:20px;margin:0}
+.about-manage-section-heading{display:flex;justify-content:space-between;align-items:center;gap:13px;margin-bottom:20px}
+.about-manage-section .outline-action,.about-manage-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:35px}
+.about-manage-photo{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,1fr);gap:22px;margin-top:16px}
+.about-manage-photo>img,.about-manage-photo-empty{display:block;width:100%;max-height:300px;min-height:180px;object-fit:contain;background:#f2f5f2}
+.about-manage-photo-empty{display:flex;align-items:center;justify-content:center;color:#85958a;font-size:12px}
+.about-manage-photo-controls{display:flex;flex-direction:column;align-items:flex-start;gap:13px}
+.about-manage label:not(.about-image-upload){display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;color:#596f5f}
+.about-manage label>input:not([type=file]){width:100%;min-width:0;height:41px;padding:8px 10px;
+  border:1px solid #d1dfd5;background:#fff;color:#31493b;font-size:12px}
+.about-manage-hint{margin-top:16px;color:#748677;font-size:11px;line-height:1.8}
+.about-image-upload{position:relative;cursor:pointer}
+.about-image-upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.about-image-upload:focus-within{outline:2px solid #456f56}
+.about-manage-items{display:flex;flex-direction:column;gap:14px}
+.about-manage-item{background:#f8faf8;border:1px solid #dce7df;padding:18px}
+.about-manage-item-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:16px}
+.about-manage-item-head strong{font-size:13px;color:#3e6549}
+.about-manage-actions{display:flex;flex-wrap:wrap;gap:7px}
+.about-manage-actions button{background:#fff;border:1px solid #cfdbd1;color:#577260;padding:6px 10px;font-size:11px}
+.about-manage-actions button:disabled{opacity:.35}
+.about-manage-fields{display:grid;grid-template-columns:1fr 1.3fr 1.6fr;gap:14px}
+.about-manage-history-fields{grid-template-columns:1fr 3fr}
+.about-manage-label{max-width:350px;margin-bottom:18px}
+.about-manage-officer-photo{display:flex;align-items:center;gap:14px;margin-top:13px;flex-wrap:wrap}
+.about-manage-officer-photo img{width:70px;height:92px;object-fit:cover}
+.about-manage-footer{display:flex;justify-content:flex-end;position:sticky;bottom:0;background:rgba(252,252,251,.96);
+  padding:15px 0;border-top:1px solid #cfdfd3;z-index:3}
+.about-manage-footer .button{display:inline-flex;align-items:center;gap:8px}
+@media(max-width:700px){
+  .about-admin-tools{margin-top:4px}
+  .about-manage-photo{grid-template-columns:1fr}
+  .about-manage-fields,.about-manage-history-fields{grid-template-columns:1fr}
+  .about-manage-item{padding:13px}
+  .about-manage-item-head{flex-wrap:wrap}
+  .about-manage-section-heading h2{font-size:17px}
+}
