@@ -1682,3 +1682,29 @@
   .finance-manager-people-feedback{flex-basis:100%}
   .finance-manager-people-error,.finance-manager-people-success{padding:9px 11px}
 }
+
+
+/* Consistent CSV import controls across donation and expense managers. */
+.finance-manager-import .finance-manager-template{display:inline-flex;align-items:center;gap:7px;min-height:34px}
+.finance-manager-csv-guidance{display:flex;flex-direction:column;gap:3px;flex:1 1 100%;font-size:11px;line-height:1.75;color:#71877a}
+.finance-manager-import-confirm{margin-top:2px}
+@media(max-width:700px){.finance-manager-csv-guidance{font-size:11px}}
+
+/* Align member administration heading with the action grid, including mobile. */
+.member-live-head>span:last-child{text-align:right;justify-self:end;padding-right:2px}
+.member-live-row>.member-actions{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;align-content:center;align-items:stretch;justify-items:stretch;justify-content:stretch;
+  width:100%;min-width:0
+}
+.member-live-row>.member-actions .outline-action{
+  box-sizing:border-box;width:100%;min-width:0;min-height:35px;margin:0;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  text-align:center;font-size:10px;white-space:nowrap;padding:8px 5px
+}
+.member-live-row>.member-actions>button:nth-child(4){grid-column:1/span 2}
+.member-live-row>.member-actions>button:nth-child(5){grid-column:3}
+@media(max-width:760px){
+  .member-live-row>.member-actions{grid-column:1/-1;grid-row:3;justify-content:stretch;gap:7px}
+  .member-live-row>.member-actions .outline-action{font-size:10px;padding-inline:4px}
+}
