@@ -30,7 +30,7 @@ export default function AboutManagement({onBack}:{onBack:()=>void}){
     setMessage('');
   }
   function reorder<T extends {id:string}>(key:'officers'|'history',index:number,offset:number){
-    const arr=[...content[key]] as T[];
+    const arr=[...content[key]] as unknown as T[];
     const target=index+offset;if(target<0||target>=arr.length)return;
     [arr[index],arr[target]]=[arr[target],arr[index]];
     setContent(prev=>({...prev,[key]:arr}));setMessage('');
