@@ -1787,3 +1787,36 @@ body:has([data-async-busy="true"]),body:has([data-async-busy="true"]) *{
   .about-manage-item-head{flex-wrap:wrap}
   .about-manage-section-heading h2{font-size:17px}
 }
+
+
+/* Small, persistent bottom notices remain visible while editing long forms. */
+.site-bottom-toast{position:fixed;z-index:1500;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
+  transform:translateX(-50%);box-sizing:border-box;max-width:min(520px,calc(100vw - 28px));min-width:min(330px,calc(100vw - 28px));
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:14px 16px;box-shadow:0 7px 28px rgba(17,39,24,.16);
+  font-size:12px;line-height:1.65;color:#315a40;background:#f1faf2;border:1px solid #acd5b5}
+.site-bottom-toast.is-error{color:#933636;background:#fff3f1;border-color:#e7b8b3}
+.site-bottom-toast>span{min-width:0;overflow-wrap:anywhere}
+.site-bottom-toast>button{flex:0 0 auto;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;
+  font:inherit;padding:5px 8px;border-radius:2px}
+@media(max-width:700px){.site-bottom-toast{bottom:max(12px,env(safe-area-inset-bottom));padding:12px 13px}}
+
+/* An expanded input stage for notice image URLs and local multi-file previews. */
+.notice-composer-image-picker{box-sizing:border-box;width:100%;min-width:0;padding:20px 22px;
+  background:#f9fbff;border:1px solid #b9cce5;display:flex;flex-direction:column;gap:14px}
+.notice-composer-image-picker-heading{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.notice-composer-image-picker-heading strong{font-size:13px;color:#335875}
+.notice-composer-image-picker-heading span{font-size:11px;color:#778c99}
+.notice-composer-image-picker-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
+.notice-composer-image-picker-url{flex:1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:0;font-size:11px;color:#546f83}
+.notice-composer-image-picker-url>input{box-sizing:border-box;width:100%;height:39px;padding:8px 11px;
+  background:#fff;border:1px solid #bbcfde;border-radius:2px;color:var(--ink);font-size:12px}
+.notice-composer-image-picker-url>input:focus{outline:2px solid #86b5d2;outline-offset:1px}
+.notice-composer-image-picker-controls>.outline-action{height:39px;box-sizing:border-box;display:inline-flex;
+  justify-content:center;align-items:center;gap:6px;white-space:nowrap}
+.notice-composer-image-picker-controls>.outline-action:disabled{opacity:.38}
+.notice-composer-image-picker>p{margin:0;color:#7d90a0;font-size:11px;line-height:1.7}
+@media(max-width:620px){.notice-composer-image-picker{padding:15px 12px}
+  .notice-composer-image-picker-url{flex-basis:100%}
+  .notice-composer-image-picker-controls>.outline-action{flex:1 1 auto}
+}

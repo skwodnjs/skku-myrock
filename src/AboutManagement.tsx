@@ -62,8 +62,7 @@ export default function AboutManagement({onBack}:{onBack:()=>void}){
       <p>대표 사진, 운영진 명단, 연혁을 수정해 공개 소개 페이지에 반영합니다.</p></div>
     <div className="container about-manage" data-async-busy={busy?'true':undefined}>
       <button className="finance-return-link" type="button" onClick={onBack}><ArrowLeft size={16}/> 소개 페이지로 돌아가기</button>
-      {error&&<p className="form-error" role="alert">{error}</p>}
-      {message&&<p className="finance-manager-success" role="status">{message}</p>}
+
       {loading?<p>소개 정보를 불러오는 중입니다.</p>:<>
         <section className="about-manage-section">
           <h2>동아리 대표 사진</h2>
@@ -77,7 +76,7 @@ export default function AboutManagement({onBack}:{onBack:()=>void}){
               <button type="button" className="outline-action" disabled={busy||!content.heroImage} onClick={()=>setContent(p=>({...p,heroImage:''}))}>사진 제거</button>
             </div>
           </div>
-          <p className="about-manage-hint">외부 HTTPS 이미지 URL을 입력하거나 JPG/PNG/WebP/GIF(5MB 이하) 파일을 업로드할 수 있습니다. 파일 업로드에는 Cloudflare R2 MYROCK_IMAGES 바인딩이 필요합니다.</p>
+          <p className="about-manage-hint">외부 HTTPS 이미지 URL을 입력하거나 JPG/PNG/WebP/GIF(5MB 이하) 파일을 업로드할 수 있습니다. 선택한 파일은 업로드 후 변경 사항을 저장해야 공개 페이지에 반영됩니다.</p>
         </section>
         <section className="about-manage-section">
           <div className="about-manage-section-heading"><h2>운영진 명단</h2><button type="button" className="outline-action" disabled={busy||content.officers.length>=40} onClick={()=>{
@@ -125,5 +124,9 @@ export default function AboutManagement({onBack}:{onBack:()=>void}){
         <div className="about-manage-footer"><button type="button" className="button button-primary" disabled={busy} onClick={()=>void save()}><Save size={16}/> 변경 사항 저장</button></div>
       </>}
     </div>
+    {(error||message)&&<div className={'site-bottom-toast'+(error?' is-error':' is-success')} role={error?'alert':'status'} aria-live="polite">
+      <span>{error||message}</span>
+      <button type="button" aria-label="알림 닫기" onClick={()=>{setError('');setMessage('');}}>닫기</button>
+    </div>}
   </>;
 }
