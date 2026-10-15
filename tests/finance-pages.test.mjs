@@ -175,7 +175,7 @@ test('transaction manager supports CSV upload, individual edits, templates and e
 });
 
 
-test('anonymous roster save reports both validation errors and success beside its save button', async () => {
+test('anonymous roster save reports errors and success in a fixed bottom popup', async () => {
   const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
   assert.match(manager,/const \[peopleError,setPeopleError\]=useState\(''\)/);
   assert.match(manager,/const \[peopleMessage,setPeopleMessage\]=useState\(''\)/);
@@ -186,11 +186,12 @@ test('anonymous roster save reports both validation errors and success beside it
   assert.match(persist,/setPeopleError\(reason instanceof Error/);
   assert.doesNotMatch(persist,/setError\(|setMessage\(/);
   const footer=manager.slice(manager.indexOf('<div className="finance-manager-people-save">'));
-  assert.match(footer,/익명자 명단 저장<\/button>[\s\S]*?finance-manager-people-feedback/);
-  assert.match(footer,/role="alert" className="finance-manager-people-error"/);
-  assert.match(footer,/role="status" className="finance-manager-people-success"/);
-  assert.match(styles,/\.finance-manager-people-save\{display:flex;align-items:center;flex-wrap:wrap;gap:12px/);
-  assert.match(styles,/@media\(max-width:700px\)\{[\s\S]*?\.finance-manager-people-feedback\{flex-basis:100%\}/);
+  assert.match(footer,/익명자 명단 저장<\/button>/);
+  assert.match(footer,/site-bottom-toast/);
+  assert.match(footer,/role=\{peopleError\?'alert':'status'\}/);
+  assert.match(footer,/onClick=\{\(\)=>\{setPeopleError\(''\);setPeopleMessage\(''\);\}\}/);
+  assert.match(styles,/\.site-bottom-toast\{position:fixed/);
+  assert.doesNotMatch(footer,/finance-manager-people-feedback/);
 });
 test('donation inline edit keeps fixed columns and equally aligned save/cancel actions',async()=>{
   const manager=await readFile(new URL('../src/DonationManagement.tsx',import.meta.url),'utf8');
